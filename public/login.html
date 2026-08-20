@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>IAM 统一认证中心</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+    .container { width: 420px; padding: 40px; background: white; border-radius: 12px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); }
+    .badge { text-align: center; margin-bottom: 10px; color: #764ba2; font-size: 13px; }
+    h1 { text-align: center; margin-bottom: 20px; color: #333; font-size: 22px; }
+    .form-group { margin-bottom: 18px; }
+    .form-group label { display: block; margin-bottom: 6px; color: #555; font-size: 14px; }
+    .form-group input { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; transition: border 0.3s; }
+    .form-group input:focus { outline: none; border-color: #667eea; }
+    button.submit { width: 100%; padding: 12px; background: #667eea; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 16px; transition: background 0.3s; }
+    button.submit:hover { background: #5a67d8; }
+    .message { padding: 12px; margin-top: 15px; border-radius: 6px; display: none; font-size: 14px; }
+    .message.success { background: #d4edda; color: #155724; display: block; }
+    .message.error { background: #f8d7da; color: #721c24; display: block; }
+    .message.info { background: #d1ecf1; color: #0c5460; display: block; }
+    .links { margin-top: 20px; text-align: center; font-size: 13px; color: #888; }
+    .links a { color: #667eea; text-decoration: none; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="badge">🔐 统一身份认证中心（IdP）</div>
+    <h1 id="pageTitle">登录</h1>
+
+    <form id="loginForm" onsubmit="handleLogin(event)">
+      <div class="form-group">
+        <label>账号（用户名 / 邮箱 / 手机号）</label>
+        <input type="text" id="account" required>
+      </div>
+      <div class="form-group">
+        <label>密码</label>
+        <input type="password" id="password" required>
+      </div>
+      <div class="form-group">
+        <label>租户（默认 default）</label>
+        <input type="text" id="realm" value="default" placeholder="default">
+      </div>
+      <button type="submit" class="submit">登录</button>
+    </form>
+
+    <!-- TOTP 两步验证表单（登录第二步） -->
+    <form id="totpForm" style="display:none" onsubmit="handleTotp(event)">
+      <div class="form-group">
+        <label>两步验证</label>
+        <input type="text" id="totpCode" placeholder="输入 6 位动态码或备用码 XXXX-XXXX" maxlength="9" required>
+      </div>
+      <button type="submit" class="submit">验证</button>
+    </form>
+
+    <!-- 登录 OTP 表单（短信/邮件验证码） -->
+    <form id="otpForm" style="display:none" onsubmit="handleOtp(event)">
+      <div class="form-group">
+        <label>短信/邮件验证码</label>
+        <div style="display:flex;gap:8px">
+          <input type="text" id="otpCode" placeholder="输入 6 位验证码" maxlength="6" required style="flex:1">
+          <button type="button" class="submit" style="flex:0 0 auto" onclick="sendLoginOtp()">发送验证码</button>
+        </div>
+      </div>
+      <button type="submit" class="submit">验证</button>
+    </form>
+
+    <!-- 强制改密表单（管理员重置密码后 / 密码过期） -->
+    <form id="changePwdForm" style="display:none" onsubmit="handleChangePwd(event)">
+      <div class="form-group">
+        <label>管理员已重置密码/密码过期，请设置新密码</label>
+        <input type="password" id="changePwdInput" placeholder="新密码" required>
+      </div>
+      <button type="submit" class="submit">保存并登录</button>
+    </form>
+
+    <!-- 忘记密码 -->
+    <form id="forgotForm" style="display:none" onsubmit="handleForgotSend(event)">
+      <div class="form-group">
+        <label>账号（用户名 / 邮箱 / 手机号）</label>
+        <input type="text" id="forgotAccount" required>
+      </div>
+      <button type="submit" class="submit">获取重置验证码</button>
+    </form>
+    <form id="resetForm" style="display:none" onsubmit="handleReset(event)">
+      <div class="form-group">
+        <label>重置验证码</label>
+        <input type="text" id="resetCode" required>
+      </div>
+      <div class="form-group">
+        <label>新密码</label>
+        <input type="password" id="resetPassword" required>
+      </div>
+      <button type="submit" class="submit">重置密码</button>
+    </form>
+
+    <div id="message" class="message"></div>
+    <div class="links">
+      还没有账号？<a href="/index.html">去注册</a>
+      <span style="margin:0 6px">|</span>
+      <a href="#" onclick="showForgot();return false;">忘记密码？</a>
+    </div>
+  </div>
+
+  <script src="/js/device.js"></script>
+  <script>
+    const params = new URLSearchParams(location.search);
+    const redirect = params.get('redirect');
+    const app = params.get('app');
+
+    if (app) {
+      document.getElementById('pageTitle').textContent = `从「${app}」跳转过来`;
+    }
+
+    // open redirect 防护：回跳地址只允许白名单内的关联系统
+    const ALLOWED_HOSTS = ['localhost:8080', 'localhost:8081', 'localhost:8082'];
+    function isSafeRedirect(url) {
+      if (!url) return false;
+      if (url.startsWith('/') && !url.startsWith('//')) return true; // 站内相对路径
+      try {
+        const u = new URL(url);
+        return ALLOWED_HOSTS.includes(u.host);
+      } catch (e) {
+        return false;
+      }
+    }
+    function getSafeRedirect() {
+      return isSafeRedirect(redirect) ? redirect : '/login-success.html';
+    }
+
+    async function checkLoggedIn() {
+      try {
+        const res = await fetch('/sso/session');
+        const data = await res.json();
+        if (data.loggedIn) {
+          showMessage('检测到已登录，正在跳回...', 'info');
+          setTimeout(() => location.href = getSafeRedirect(), 800);
+        }
+      } catch (e) {}
+    }
+    checkLoggedIn();
+
+    function showMessage(text, type) {
+      const msg = document.getElementById('message');
+      msg.textContent = text;
+      msg.className = 'message ' + type;
+    }
+
+    function switchForm(showId) {
+      ['loginForm','totpForm','changePwdForm','forgotForm','resetForm'].forEach(id => {
+        document.getElementById(id).style.display = (id === showId) ? 'block' : 'none';
+      });
+    }
+
+    function showForgot() {
+      switchForm('forgotForm');
+      showMessage('请输入账号获取重置验证码（demo 环境验证码会直接显示）', 'info');
+    }
+
+    async function handleLogin(e) {
+      e.preventDefault();
+      const account = document.getElementById('account').value;
+      const password = document.getElementById('password').value;
+      const realm = (document.getElementById('realm').value || 'default').trim();
+
+      try {
+        const res = await fetch('/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ account, password, realm, deviceId: getDeviceId() })
+        });
+        const data = await res.json();
+
+        if (res.ok) {
+          if (data.mustChangePassword) {
+            // 管理员重置/密码过期：先改密
+            window._changeToken = data.changeToken;
+            switchForm('changePwdForm');
+            showMessage('请设置新密码后才能继续登录', 'info');
+          } else if (data.totpRequired) {
+            // 需要两步验证：切换为动态码输入
+            showMessage('账号密码正确，请输入动态验证码', 'info');
+            switchForm('totpForm');
+            window._loginToken = data.loginToken;
+          } else if (data.otpRequired) {
+            // 需要登录 OTP：切换为验证码输入
+            showMessage('账号密码正确，请发送并输入验证码', 'info');
+            switchForm('otpForm');
+            window._loginToken = data.loginToken;
+          } else {
+            showMessage('登录成功！', 'success');
+            setTimeout(() => {
+              location.href = getSafeRedirect();
+            }, 800);
+          }
+        } else {
+          showMessage(data.error || '登录失败', 'error');
+        }
+      } catch (err) {
+        showMessage('网络错误', 'error');
+      }
+    }
+
+    async function handleChangePwd(e) {
+      e.preventDefault();
+      const newPassword = document.getElementById('changePwdInput').value;
+      try {
+        const res = await fetch('/auth/change-password-pending', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ changeToken: window._changeToken, newPassword, deviceId: getDeviceId() })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          showMessage('密码修改成功，已自动登录！', 'success');
+          setTimeout(() => location.href = getSafeRedirect(), 800);
+        } else {
+          showMessage(data.error || '修改失败', 'error');
+        }
+      } catch (err) {
+        showMessage('网络错误', 'error');
+      }
+    }
+
+    let forgotUserId = null;
+
+    async function handleForgotSend(e) {
+      e.preventDefault();
+      const account = document.getElementById('forgotAccount').value.trim();
+      if (!account) { showMessage('请输入账号', 'error'); return; }
+      try {
+        const res = await fetch('/auth/forgot-password', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ account })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          if (data.userId) {
+            forgotUserId = data.userId;
+            showMessage(`验证码已生成：${data.code}（demo 环境直接显示，生产环境会发往邮箱/手机）`, 'info');
+            switchForm('resetForm');
+          } else {
+            showMessage(data.message || '已处理', 'info');
+            setTimeout(() => switchForm('loginForm'), 2000);
+          }
+        } else {
+          showMessage(data.error || '请求失败', 'error');
+        }
+      } catch (err) {
+        showMessage('网络错误', 'error');
+      }
+    }
+
+    async function handleReset(e) {
+      e.preventDefault();
+      const code = document.getElementById('resetCode').value.trim();
+      const newPassword = document.getElementById('resetPassword').value;
+      try {
+        const res = await fetch('/auth/reset-password', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: forgotUserId, code, newPassword })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          showMessage('密码已重置，请用新密码登录', 'success');
+          setTimeout(() => location.href = '/login.html', 1000);
+        } else {
+          showMessage(data.error || '重置失败', 'error');
+        }
+      } catch (err) {
+        showMessage('网络错误', 'error');
+      }
+    }
+
+    async function handleTotp(e) {
+      e.preventDefault();
+      const code = document.getElementById('totpCode').value.trim();
+      if (!code) {
+        showMessage('请输入动态码或备用码', 'error');
+        return;
+      }
+      try {
+        const res = await fetch('/auth/verify-login-totp', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ loginToken: window._loginToken, code, deviceId: getDeviceId() })
+        });
+        const data = await res.json();
+
+        if (res.ok) {
+          showMessage('登录成功！', 'success');
+          setTimeout(() => {
+            location.href = getSafeRedirect();
+          }, 800);
+        } else {
+          showMessage(data.error || '验证失败', 'error');
+        }
+      } catch (err) {
+        showMessage('网络错误', 'error');
+      }
+    }
+
+    // 登录 OTP：发送验证码（demo 直接返回并在提示中展示，生产改为真实短信/邮件）
+    async function sendLoginOtp() {
+      if (!window._loginToken) { showMessage('登录会话缺失，请重新登录', 'error'); return; }
+      try {
+        const res = await fetch('/auth/send-login-otp', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ loginToken: window._loginToken })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          showMessage(`验证码已发送：${data.code}`, 'info');
+        } else {
+          showMessage(data.error || '发送失败', 'error');
+        }
+      } catch (err) {
+        showMessage('网络错误', 'error');
+      }
+    }
+
+    async function handleOtp(e) {
+      e.preventDefault();
+      const code = document.getElementById('otpCode').value.trim();
+      if (!code) {
+        showMessage('请输入验证码', 'error');
+        return;
+      }
+      try {
+        const res = await fetch('/auth/verify-login-otp', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ loginToken: window._loginToken, code, deviceId: getDeviceId() })
+        });
+        const data = await res.json();
+
+        if (res.ok) {
+          showMessage('登录成功！', 'success');
+          setTimeout(() => {
+            location.href = getSafeRedirect();
+          }, 800);
+        } else {
+          showMessage(data.error || '验证失败', 'error');
+        }
+      } catch (err) {
+        showMessage('网络错误', 'error');
+      }
+    }
+  </script>
+</body>
+</html>

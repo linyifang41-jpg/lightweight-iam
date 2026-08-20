@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>登录成功 - IAM 认证中心</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+    .container { width: 520px; padding: 40px; background: white; border-radius: 12px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); }
+    h1 { text-align: center; color: #333; margin-bottom: 5px; font-size: 24px; }
+    .subtitle { text-align: center; color: #666; margin-bottom: 25px; font-size: 14px; }
+    .section { background: #f8f9fa; border-radius: 10px; padding: 20px; margin-bottom: 20px; }
+    .section h2 { font-size: 16px; color: #333; margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 10px; }
+    .info-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; }
+    .info-row .label { color: #666; font-size: 14px; }
+    .info-row .value { color: #333; font-size: 14px; font-weight: 500; }
+    .info-row .value.empty { color: #999; font-weight: normal; font-style: italic; }
+    .btn-bind { background: #007bff; color: white; border: none; padding: 6px 16px; border-radius: 4px; cursor: pointer; font-size: 13px; transition: background 0.3s; }
+    .btn-bind:hover { background: #0056b3; }
+    .apps { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px; }
+    .app-card { background: white; border: 2px solid #e9ecef; border-radius: 10px; padding: 20px; text-align: center; text-decoration: none; color: inherit; transition: all 0.3s; }
+    .app-card:hover { border-color: #007bff; background: #e7f1ff; transform: translateY(-2px); }
+    .app-card .icon { font-size: 32px; margin-bottom: 8px; }
+    .app-card h3 { margin: 0 0 5px; color: #333; font-size: 15px; }
+    .app-card p { margin: 0; color: #666; font-size: 12px; }
+    .logout { width: 100%; background: transparent; border: 1px solid #dc3545; color: #dc3545; padding: 10px; border-radius: 6px; cursor: pointer; font-size: 14px; transition: all 0.3s; }
+    .logout:hover { background: #dc3545; color: white; }
+    .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); align-items: center; justify-content: center; }
+    .modal.show { display: flex; }
+    .modal-content { background: white; border-radius: 12px; padding: 30px; width: 400px; }
+    .modal-content h3 { margin-bottom: 20px; color: #333; }
+    .modal-content input { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; margin-bottom: 15px; font-size: 14px; }
+    .modal-content .btn-group { display: flex; gap: 10px; }
+    .modal-content button { flex: 1; padding: 10px; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; }
+    .btn-cancel { background: #f0f0f0; color: #666; }
+    .btn-confirm { background: #007bff; color: white; }
+    .message { padding: 10px; border-radius: 6px; margin-top: 10px; font-size: 13px; display: none; }
+    .message.error { background: #f8d7da; color: #721c24; display: block; }
+    .message.success { background: #d4edda; color: #155724; display: block; }
+    .message.info { background: #d1ecf1; color: #0c5460; display: block; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>✅ 登录成功！</h1>
+    <p class="subtitle">你现在可以访问以下关联系统</p>
+
+    <div class="section">
+      <h2>👤 账号信息</h2>
+      <div class="info-row">
+        <span class="label">用户名</span>
+        <span class="value" id="username">加载中...</span>
+      </div>
+      <div class="info-row">
+        <span class="label">邮箱</span>
+        <span class="value" id="email">加载中...</span>
+        <button class="btn-bind" id="btnBindEmail" onclick="openModal('email')">去绑定</button>
+      </div>
+      <div class="info-row">
+        <span class="label">手机号</span>
+        <span class="value" id="phone">加载中...</span>
+        <button class="btn-bind" id="btnBindPhone" onclick="openModal('phone')">去绑定</button>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>🔒 安全中心</h2>
+      <div class="info-row">
+        <span class="label">登录设备</span>
+        <button class="btn-bind" onclick="openSessionsModal()">查看 / 下线设备</button>
+      </div>
+      <div class="info-row">
+        <span class="label">两步验证 (TOTP)</span>
+        <span class="value" id="totpStatus" style="display:none"></span>
+        <button class="btn-bind" id="btnTotpSetup" onclick="openTotpSetup()">去开启</button>
+        <button class="btn-bind" id="btnTotpManage" onclick="openTotpManage()" style="display:none">管理备用码</button>
+      </div>
+      <div class="info-row">
+        <span class="label">修改密码</span>
+        <button class="btn-bind" onclick="openPwdModal()">去修改</button>
+      </div>
+    </div>
+
+    <div class="apps">
+      <a href="http://localhost:8081" class="app-card">
+        <div class="icon">🏢</div>
+        <h3>员工门户</h3>
+        <p>考勤、任务、公告</p>
+      </a>
+      <a href="http://localhost:8082" class="app-card">
+        <div class="icon">📊</div>
+        <h3>项目管理系统</h3>
+        <p>项目、任务、进度</p>
+      </a>
+    </div>
+
+    <button class="logout" onclick="handleLogout()">退出登录</button>
+  </div>
+
+  <!-- 绑定弹窗 -->
+  <div class="modal" id="bindModal">
+    <div class="modal-content">
+      <h3 id="modalTitle">绑定</h3>
+      <input type="text" id="bindInput" placeholder="">
+      <div class="message" id="bindMessage"></div>
+      <div class="btn-group">
+        <button class="btn-cancel" onclick="closeModal()">取消</button>
+        <button class="btn-confirm" onclick="confirmBind()">确认绑定</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 修改密码弹窗 -->
+  <div class="modal" id="pwdModal">
+    <div class="modal-content">
+      <h3>修改密码</h3>
+      <input type="password" id="pwdOld" placeholder="当前密码">
+      <input type="password" id="pwdNew" placeholder="新密码">
+      <div class="message" id="pwdMessage"></div>
+      <div class="btn-group">
+        <button class="btn-cancel" onclick="closePwdModal()">取消</button>
+        <button class="btn-confirm" onclick="confirmChangePwd()">确认修改</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 登录设备弹窗 -->
+  <div class="modal" id="sessionsModal">
+    <div class="modal-content">
+      <h3>我的登录设备</h3>
+      <div id="mySessionsList"></div>
+      <div class="btn-group">
+        <button class="btn-cancel" onclick="closeSessionsModal()">关闭</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 两步验证设置弹窗 -->
+  <div class="modal" id="totpSetupModal">
+    <div class="modal-content">
+      <h3>开启两步验证</h3>
+      <div id="totpSetupBody"></div>
+      <div class="message" id="totpSetupMsg"></div>
+      <div class="btn-group" id="totpSetupBtns">
+        <button class="btn-cancel" onclick="closeTotpSetup()">取消</button>
+        <button class="btn-confirm" onclick="confirmTotpEnable()">确认开启</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 备用码管理弹窗 -->
+  <div class="modal" id="totpManageModal">
+    <div class="modal-content">
+      <h3>备用验证码 (Recovery Codes)</h3>
+      <div id="totpManageBody"></div>
+      <div class="message" id="totpManageMsg"></div>
+      <div class="btn-group">
+        <button class="btn-cancel" onclick="closeTotpManage()">关闭</button>
+        <button class="btn-confirm" onclick="regenerateRecovery()">重新生成</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const API = 'http://localhost:8080';
+    let currentUser = null;
+    let bindType = '';
+
+    function getCookie(name) {
+      const match = document.cookie.match(new RegExp('(^|; )' + name + '=([^;]*)'));
+      return match ? decodeURIComponent(match[2]) : null;
+    }
+
+    function csrfHeaders() {
+      const token = getCookie('csrf_token');
+      return token ? { 'X-CSRF-Token': token } : {};
+    }
+
+    async function checkAdmin() {
+      try {
+        const res = await fetch(`${API}/auth/me`, { credentials: 'include' });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.roles && data.roles.some(r => r.name === 'admin')) {
+            const link = document.createElement('a');
+            link.href = '/admin.html';
+            link.className = 'btn-bind';
+            link.style.textDecoration = 'none';
+            link.style.marginTop = '10px';
+            link.style.display = 'block';
+            link.textContent = '🛡️ 管理控制台';
+            document.querySelector('.apps').insertAdjacentElement('afterend', link);
+          }
+        }
+      } catch (e) {}
+    }
+
+    // ===== 两步验证 (TOTP) =====
+    async function refreshTotpStatus() {
+      try {
+        const res = await fetch(`${API}/auth/totp/recovery`, { credentials: 'include' });
+        if (!res.ok) return;
+        const data = await res.json();
+        const statusEl = document.getElementById('totpStatus');
+        const setupBtn = document.getElementById('btnTotpSetup');
+        const manageBtn = document.getElementById('btnTotpManage');
+        if (data.count !== undefined) {
+          statusEl.textContent = `已开启 · 剩余备用码 ${data.count}`;
+          statusEl.style.display = 'inline';
+          setupBtn.style.display = 'none';
+          manageBtn.style.display = 'inline-block';
+        } else {
+          statusEl.style.display = 'none';
+          setupBtn.style.display = 'inline-block';
+          manageBtn.style.display = 'none';
+        }
+      } catch (e) {}
+    }
+
+    let totpSecret = null;
+    let totpOtpUri = null;
+
+    async function openTotpSetup() {
+      totpSecret = null;
+      const body = document.getElementById('totpSetupBody');
+      body.innerHTML = '<div style="color:#999">正在准备...<\/div>';
+      document.getElementById('totpSetupMsg').className = 'message';
+      document.getElementById('totpSetupModal').classList.add('show');
+      try {
+        const res = await fetch(`${API}/auth/totp/setup`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json', ...csrfHeaders() }, credentials: 'include'
+        });
+        const data = await res.json();
+        if (!res.ok) { body.innerHTML = `<div class="message error">${data.error || '获取失败'}<\/div>`; return; }
+        totpSecret = data.secret;
+        totpOtpUri = data.otpauthUri;
+        body.innerHTML = `
+          <p style="font-size:13px;color:#666;margin-bottom:12px">1. 在身份验证器（如 Google Authenticator）中添加以下密钥：</p>
+          <div style="background:#f0f0f0;padding:10px;border-radius:6px;margin-bottom:12px;word-break:break-all;font-family:monospace;font-size:13px">${data.secret}</div>
+          <p style="font-size:13px;color:#666;margin-bottom:12px">2. 输入应用显示的 6 位动态码完成开启：</p>
+          <input type="text" id="totpEnableCode" placeholder="6 位动态码" maxlength="6" pattern="\\d{6}">`;
+      } catch (e) {
+        body.innerHTML = '<div class="message error">网络错误<\/div>';
+      }
+    }
+
+    function closeTotpSetup() {
+      document.getElementById('totpSetupModal').classList.remove('show');
+    }
+
+    async function confirmTotpEnable() {
+      const code = document.getElementById('totpEnableCode');
+      if (!code || !/^\d{6}$/.test(code.value.trim())) {
+        const msg = document.getElementById('totpSetupMsg');
+        msg.textContent = '请输入 6 位动态码';
+        msg.className = 'message error';
+        return;
+      }
+      const msg = document.getElementById('totpSetupMsg');
+      msg.textContent = '正在开启...';
+      msg.className = 'message info';
+      try {
+        const res = await fetch(`${API}/auth/totp/enable`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', ...csrfHeaders() },
+          credentials: 'include',
+          body: JSON.stringify({ code: code.value.trim() })
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          msg.textContent = data.error || '开启失败';
+          msg.className = 'message error';
+          return;
+        }
+        const body = document.getElementById('totpSetupBody');
+        const list = (data.recoveryCodes || []).map(c => `<div style="font-family:monospace;font-size:15px;padding:4px 0">${c}</div>`).join('');
+        body.innerHTML = `
+          <div class="message success">两步验证已开启！<\/div>
+          <p style="font-size:13px;color:#666;margin:12px 0 6px">请立即保存以下备用验证码（每个仅可使用一次，设备丢失时用于登录）：</p>
+          <div style="background:#fff8e1;border:1px solid #ffe082;border-radius:6px;padding:12px">${list}<\/div>`;
+        document.getElementById('totpSetupBtns').style.display = 'none';
+        msg.className = 'message';
+        refreshTotpStatus();
+      } catch (e) {
+        msg.textContent = '网络错误';
+        msg.className = 'message error';
+      }
+    }
+
+    async function openTotpManage() {
+      const body = document.getElementById('totpManageBody');
+      const msg = document.getElementById('totpManageMsg');
+      msg.className = 'message';
+      body.innerHTML = '<div style="color:#999">加载中...<\/div>';
+      document.getElementById('totpManageModal').classList.add('show');
+      try {
+        const res = await fetch(`${API}/auth/totp/recovery`, { credentials: 'include' });
+        const data = await res.json();
+        body.innerHTML = `<p style="font-size:13px;color:#666;margin-bottom:12px">剩余可用备用验证码：<b>${data.count || 0}</b> 个</p>
+          <p style="font-size:12px;color:#999">点击"重新生成"将作废全部旧备用码并生成 10 个新码（仅展示一次）。</p>`;
+      } catch (e) {
+        body.innerHTML = '<div class="message error">网络错误<\/div>';
+      }
+    }
+
+    function closeTotpManage() {
+      document.getElementById('totpManageModal').classList.remove('show');
+    }
+
+    async function regenerateRecovery() {
+      const msg = document.getElementById('totpManageMsg');
+      if (!confirm('确定重新生成备用码？所有旧备用码将立即作废。')) return;
+      msg.textContent = '正在生成...';
+      msg.className = 'message info';
+      try {
+        const res = await fetch(`${API}/auth/totp/recovery/regenerate`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json', ...csrfHeaders() }, credentials: 'include'
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          msg.textContent = data.error || '生成失败';
+          msg.className = 'message error';
+          return;
+        }
+        const list = (data.recoveryCodes || []).map(c => `<div style="font-family:monospace;font-size:15px;padding:4px 0">${c}</div>`).join('');
+        document.getElementById('totpManageBody').innerHTML = `
+          <div class="message success">已重新生成！请立即保存（仅展示一次）：<\/div>
+          <div style="background:#fff8e1;border:1px solid #ffe082;border-radius:6px;padding:12px;margin-top:12px">${list}<\/div>`;
+        msg.className = 'message';
+        refreshTotpStatus();
+      } catch (e) {
+        msg.textContent = '网络错误';
+        msg.className = 'message error';
+      }
+    }
+
+    async function init() {
+      try {
+        const res = await fetch(`${API}/sso/session`);
+        const data = await res.json();
+        if (data.loggedIn) {
+          currentUser = data.user;
+          document.getElementById('username').textContent = currentUser.username;
+          updateBindStatus('email', currentUser.email);
+          updateBindStatus('phone', currentUser.phone);
+          checkAdmin();
+          refreshTotpStatus();
+        } else {
+          location.href = '/login.html';
+        }
+      } catch (e) {
+        location.href = '/login.html';
+      }
+    }
+
+    function updateBindStatus(type, value) {
+      const el = document.getElementById(type);
+      const btn = document.getElementById(`btnBind${type.charAt(0).toUpperCase() + type.slice(1)}`);
+      if (value) {
+        el.textContent = value;
+        el.classList.remove('empty');
+        btn.style.display = 'none';
+      } else {
+        el.textContent = '未绑定';
+        el.classList.add('empty');
+        btn.style.display = 'inline-block';
+      }
+    }
+
+    function openModal(type) {
+      bindType = type;
+      document.getElementById('modalTitle').textContent = type === 'email' ? '绑定邮箱' : '绑定手机号';
+      document.getElementById('bindInput').placeholder = type === 'email' ? '请输入邮箱地址' : '请输入手机号';
+      document.getElementById('bindInput').value = '';
+      document.getElementById('bindMessage').style.display = 'none';
+      document.getElementById('bindModal').classList.add('show');
+    }
+
+    function closeModal() {
+      document.getElementById('bindModal').classList.remove('show');
+    }
+
+    async function confirmBind() {
+      const value = document.getElementById('bindInput').value.trim();
+      const msgEl = document.getElementById('bindMessage');
+      
+      if (!value) {
+        msgEl.textContent = '请输入内容';
+        msgEl.className = 'message error';
+        return;
+      }
+
+      msgEl.textContent = '绑定中...';
+      msgEl.className = 'message info';
+
+      try {
+        const url = `${API}/auth/bind-${bindType}`;
+        const body = { [bindType]: value };
+        
+        console.log('发送绑定请求:', { url, body });
+        
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', ...csrfHeaders() },
+          credentials: 'include',
+          body: JSON.stringify(body)
+        });
+        
+        console.log('响应状态:', res.status);
+        const data = await res.json();
+        console.log('响应数据:', data);
+
+        if (res.ok) {
+          msgEl.textContent = '绑定成功！';
+          msgEl.className = 'message success';
+          setTimeout(() => {
+            updateBindStatus(bindType, value);
+            closeModal();
+          }, 1000);
+        } else {
+          msgEl.textContent = data.error || '绑定失败';
+          msgEl.className = 'message error';
+        }
+      } catch (e) {
+        console.error('绑定错误:', e);
+        msgEl.textContent = '网络错误: ' + e.message;
+        msgEl.className = 'message error';
+      }
+    }
+
+    async function handleLogout() {
+      await fetch(`${API}/auth/logout`, { method: 'POST', headers: csrfHeaders(), credentials: 'include' });
+      location.href = '/logout.html';
+    }
+
+    // ===== 修改密码 =====
+    function openPwdModal() {
+      document.getElementById('pwdOld').value = '';
+      document.getElementById('pwdNew').value = '';
+      document.getElementById('pwdMessage').className = 'message';
+      document.getElementById('pwdModal').classList.add('show');
+    }
+    function closePwdModal() {
+      document.getElementById('pwdModal').classList.remove('show');
+    }
+    async function confirmChangePwd() {
+      const oldPassword = document.getElementById('pwdOld').value;
+      const newPassword = document.getElementById('pwdNew').value;
+      const msgEl = document.getElementById('pwdMessage');
+      if (!oldPassword || !newPassword) {
+        msgEl.textContent = '请填写完整';
+        msgEl.className = 'message error';
+        return;
+      }
+      try {
+        const res = await fetch(`${API}/auth/change-password`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', ...csrfHeaders() },
+          credentials: 'include',
+          body: JSON.stringify({ oldPassword, newPassword })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          msgEl.textContent = '修改成功，出于安全考虑已退出登录，请重新登录';
+          msgEl.className = 'message success';
+          setTimeout(() => location.href = '/login.html', 1200);
+        } else {
+          msgEl.textContent = data.error || '修改失败';
+          msgEl.className = 'message error';
+        }
+      } catch (e) {
+        msgEl.textContent = '网络错误';
+        msgEl.className = 'message error';
+      }
+    }
+
+    // ===== 我的登录设备 =====
+    function openSessionsModal() {
+      document.getElementById('sessionsModal').classList.add('show');
+      loadMySessions();
+    }
+    function closeSessionsModal() {
+      document.getElementById('sessionsModal').classList.remove('show');
+    }
+    async function loadMySessions() {
+      const listEl = document.getElementById('mySessionsList');
+      listEl.innerHTML = '<p style="color:#999">加载中...</p>';
+      try {
+        const res = await fetch(`${API}/auth/sessions`, { credentials: 'include' });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || '获取失败');
+        if (!data.sessions.length) {
+          listEl.innerHTML = '<p style="color:#999">暂无会话记录</p>';
+          return;
+        }
+        listEl.innerHTML = data.sessions.map(s => `
+          <div class="info-row" style="border-bottom:1px solid #eee">
+            <div>
+              <span class="label" style="display:block">${s.device || '未知设备'} ${s.current ? '<span style="color:#007bff;font-size:12px">[当前]</span>' : ''}</span>
+              <span style="color:#999;font-size:12px">${s.ip || '-'} · 最近活跃 ${s.last_active_at}</span>
+            </div>
+            ${s.current ? '' : `<button class="btn-bind" style="background:#dc3545" onclick="revokeMySession('${s.id}')">下线</button>`}
+          </div>
+        `).join('');
+      } catch (e) {
+        listEl.innerHTML = '<p style="color:#dc3545">' + e.message + '</p>';
+      }
+    }
+    async function revokeMySession(sessionId) {
+      if (!confirm('确定下线该设备？')) return;
+      try {
+        const res = await fetch(`${API}/auth/sessions/${sessionId}/revoke`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', ...csrfHeaders() },
+          credentials: 'include'
+        });
+        const data = await res.json();
+        if (res.ok) loadMySessions();
+        else alert(data.error || '操作失败');
+      } catch (e) { alert('网络错误'); }
+    }
+
+    init();
+  </script>
+</body>
+</html>

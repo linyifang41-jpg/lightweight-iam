@@ -1,0 +1,1961 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>管理控制台 - IAM</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f0f2f5; min-height: 100vh; }
+    .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 16px 24px; color: white; display: flex; justify-content: space-between; align-items: center; }
+    .header h1 { font-size: 20px; }
+    .header .actions a { color: white; margin-left: 16px; text-decoration: none; font-size: 14px; }
+    .header .actions a:hover { text-decoration: underline; }
+    .container { max-width: 1200px; margin: 24px auto; padding: 0 16px; }
+    .tabs { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
+    .tabs button { padding: 10px 20px; border: none; background: #fff; border-radius: 8px; cursor: pointer; font-size: 14px; color: #555; box-shadow: 0 1px 3px rgba(0,0,0,0.1); transition: all 0.2s; }
+    .tabs button.active { background: #667eea; color: white; }
+    .panel { display: none; background: #fff; border-radius: 12px; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    .panel.active { display: block; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid #eee; font-size: 14px; }
+    th { color: #666; font-weight: 600; background: #fafafa; }
+    .badge { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 12px; margin: 2px; }
+    .badge.active { background: #d4edda; color: #155724; }
+    .badge.disabled { background: #f8d7da; color: #721c24; }
+    .badge.archived { background: #fff3cd; color: #856404; }
+    .badge.revoked { background: #f8d7da; color: #721c24; }
+    .badge.role { background: #e7f1ff; color: #0c5460; }
+    .badge.permission { background: #f0f0f0; color: #555; }
+    .btn { padding: 6px 14px; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; margin: 2px; transition: all 0.2s; }
+    .btn-primary { background: #007bff; color: white; }
+    .btn-primary:hover { background: #0056b3; }
+    .btn-danger { background: #dc3545; color: white; }
+    .btn-danger:hover { background: #c82333; }
+    .btn-outline { background: #f0f0f0; color: #555; }
+    .btn-outline:hover { background: #e0e0e0; }
+    .form-row { display: flex; gap: 10px; margin-bottom: 16px; align-items: center; flex-wrap: wrap; }
+    .form-row input, .form-row select, .form-row textarea { padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; }
+    .form-row input[type="text"], .form-row input[type="password"] { flex: 1; min-width: 120px; }
+    .message { padding: 10px 14px; border-radius: 6px; margin: 10px 0; font-size: 13px; display: none; }
+    .message.success { background: #d4edda; color: #155724; display: block; }
+    .message.error { background: #f8d7da; color: #721c24; display: block; }
+    .perms-list { display: flex; gap: 12px; flex-wrap: wrap; margin: 12px 0; }
+    .perms-list label { display: flex; align-items: center; gap: 6px; font-size: 14px; background: #f8f9fa; padding: 6px 12px; border-radius: 6px; cursor: pointer; }
+    .section-title { font-size: 16px; font-weight: 600; margin-bottom: 16px; color: #333; }
+    .empty { color: #999; text-align: center; padding: 30px; font-size: 14px; }
+    .access-denied { text-align: center; padding: 60px 20px; }
+    .access-denied h2 { color: #721c24; margin-bottom: 10px; }
+    .access-denied a { color: #667eea; }
+    .group-card { border: 1px solid #eee; border-radius: 10px; padding: 16px; margin-bottom: 14px; }
+    .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); align-items: center; justify-content: center; z-index: 100; }
+    .modal.show { display: flex; }
+    .modal-content { background: white; border-radius: 12px; padding: 24px; width: 480px; max-width: 92vw; max-height: 80vh; overflow: auto; }
+    .modal-content h3 { margin-bottom: 16px; color: #333; }
+    .modal-content textarea { width: 100%; height: 220px; border: 1px solid #ddd; border-radius: 6px; padding: 10px; font-size: 13px; font-family: monospace; }
+    .modal-content .btn-group { display: flex; gap: 10px; margin-top: 14px; }
+    .modal-content button { padding: 9px 16px; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; }
+    .settings-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .settings-grid .field label { display: block; margin-bottom: 5px; color: #555; font-size: 13px; }
+    .settings-grid .field input { width: 100%; padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>🛡️ IAM 管理控制台</h1>
+    <div class="actions">
+      <a href="/login-success.html">返回首页</a>
+      <a href="#" onclick="handleLogout(event)">退出登录</a>
+    </div>
+  </div>
+
+  <div class="container">
+    <div id="accessDenied" class="panel active access-denied" style="display:none">
+      <h2>⛔ 无访问权限</h2>
+      <p>当前账号不是管理员，无法访问管理控制台。</p>
+      <p><a href="/login-success.html">← 返回</a></p>
+    </div>
+
+    <div id="mainContent" style="display:none">
+      <div class="tabs">
+        <button class="active" onclick="showTab('users')">👥 用户管理</button>
+        <button onclick="showTab('roles')">🎭 角色权限</button>
+        <button onclick="showTab('abac')">🧩 ABAC 策略</button>
+        <button onclick="showTab('approvals')">📝 访问审批</button>
+        <button onclick="showTab('sa')">🤖 服务账号</button>
+        <button onclick="showTab('gov')">🛡️ 默认账户</button>
+        <button onclick="showTab('cert')">📋 访问复审</button>
+        <button onclick="showTab('wf')">⚙️ 工作流</button>
+        <button onclick="showTab('jit')">⚡ 即时访问</button>
+        <button onclick="showTab('an')">📊 权限分析</button>
+        <button onclick="showTab('bg')">🚨 应急访问</button>
+        <button onclick="showTab('pa')">🔐 特权账号</button>
+        <button onclick="showTab('wh')">🔗 Webhook</button>
+        <button onclick="showTab('groups')">👪 用户组</button>
+        <button onclick="showTab('departments')">🏢 组织架构</button>
+        <button onclick="showTab('sessions')">🖥️ 会话管理</button>
+        <button onclick="showTab('settings')">🔐 安全策略</button>
+        <button onclick="showTab('audit')">📋 审计日志</button>
+        <button onclick="showTab('vault')">🔑 凭据保险库</button>
+        <button onclick="showTab('ledger')">📗 权限台账</button>
+        <button onclick="showTab('oidc')">🔌 OIDC 应用</button>
+        <button onclick="showTab('lifecycle')">🔄 生命周期</button>
+      </div>
+
+      <!-- ABAC 属性授权 -->
+      <div class="panel" id="panel-abac">
+        <div class="section-title">ABAC 策略（基于属性的访问控制）</div>
+        <div class="form-row">
+          <input type="text" id="abacName" placeholder="策略名称（必填）" style="width:150px">
+          <input type="text" id="abacResourceType" placeholder="资源类型（如 document，* 全局）" style="width:190px">
+          <select id="abacEffect"><option value="allow">allow（允许）</option><option value="deny">deny（拒绝）</option></select>
+          <input type="number" id="abacPriority" placeholder="优先级" value="0" style="width:70px">
+          <label style="font-size:12px;color:#666"><input type="checkbox" id="abacEnabled" checked> 启用</label>
+          <input type="text" id="abacDesc" placeholder="描述（可选）" style="width:160px">
+          <button class="btn btn-primary" onclick="createAbacPolicy()">创建策略</button>
+        </div>
+        <div class="form-row">
+          <span style="font-size:12px;color:#999">条件 JSON（每项 {lhs, op, rhs}，多条件 AND）：lhs 支持 <code>user.department</code>/<code>user.status</code>/<code>user.realm</code>/<code>user.attr.&lt;键&gt;</code>/<code>resource.&lt;属性&gt;</code>/<code>context.ip</code>/<code>context.now</code>；op 支持 eq/ne/in/contains/exists/gt/ge/lt/le</span>
+          <textarea id="abacConditions" rows="3" style="width:100%" placeholder='[{"lhs":"user.department","op":"eq","rhs":"技术部"}]'></textarea>
+        </div>
+        <div id="abacMsg" class="message"></div>
+        <button class="btn btn-outline" onclick="loadAbacPolicies()" style="margin-bottom:12px">刷新</button>
+        <table>
+          <thead><tr><th>名称</th><th>资源类型</th><th>效果</th><th>优先级</th><th>启用</th><th>条件</th><th>操作</th></tr></thead>
+          <tbody id="abacTableBody"></tbody>
+        </table>
+      </div>
+
+      <!-- 访问请求与审批流 -->
+      <div class="panel" id="panel-approvals">
+        <div class="section-title">访问请求审批（自助申请 → 审批 → 自动开通）</div>
+        <div class="form-row">
+          <select id="approvalFilter" onchange="loadAccessRequests()">
+            <option value="">全部状态</option>
+            <option value="pending">待审批</option>
+            <option value="approved">已通过</option>
+            <option value="rejected">已拒绝</option>
+          </select>
+          <button class="btn btn-outline" onclick="loadAccessRequests()">刷新</button>
+          <span style="font-size:12px;color:#999">审批级数：<span id="approvalLevels"></span></span>
+        </div>
+        <div id="approvalMsg" class="message"></div>
+        <table>
+          <thead><tr><th>申请者</th><th>申请角色</th><th>原因</th><th>状态</th><th>审批进度</th><th>备注</th><th>时间</th><th>操作</th></tr></thead>
+          <tbody id="approvalTableBody"></tbody>
+        </table>
+      </div>
+
+      <!-- 服务账号（非人类身份） -->
+      <div class="panel" id="panel-sa">
+        <div class="section-title">服务账号（客户端凭据 + 短期令牌）</div>
+        <div class="form-row">
+          <input type="text" id="saName" placeholder="名称（必填）" style="width:140px">
+          <input type="text" id="saDesc" placeholder="描述（可选）" style="width:180px">
+          <select id="saPerms" multiple size="3" style="width:220px"></select>
+          <input type="number" id="saTtl" value="15" placeholder="令牌TTL分钟" style="width:90px">
+          <button class="btn btn-primary" onclick="createServiceAccount()">创建服务账号</button>
+        </div>
+        <div id="saMsg" class="message"></div>
+        <button class="btn btn-outline" onclick="loadServiceAccounts()" style="margin-bottom:12px">刷新</button>
+        <table>
+          <thead><tr><th>名称</th><th>Client ID</th><th>权限</th><th>TTL</th><th>状态</th><th>最近使用</th><th>操作</th></tr></thead>
+          <tbody id="saTableBody"></tbody>
+        </table>
+      </div>
+
+      <!-- 默认账户治理（等保） -->
+      <div class="panel" id="panel-gov">
+        <div class="section-title">默认账户治理（等保）：种子账户 + 默认密码风险检测与处置</div>
+        <div class="form-row">
+          <label>策略：拦截"种子账户默认密码登录"</label>
+          <select id="govPolicy" onchange="saveGovPolicy()">
+            <option value="1">开启</option>
+            <option value="0">关闭</option>
+          </select>
+        </div>
+        <button class="btn btn-outline" onclick="loadDefaultAccounts()" style="margin:10px 0">重新检测</button>
+        <div id="govMsg" class="message"></div>
+        <table>
+          <thead><tr><th>用户名</th><th>邮箱/手机</th><th>种子账户</th><th>默认密码</th><th>密码登录</th><th>待改密</th><th>状态</th><th>操作</th></tr></thead>
+          <tbody id="govTableBody"></tbody>
+        </table>
+      </div>
+
+      <!-- 访问复审（Access Certification） -->
+      <div class="panel" id="panel-cert">
+        <div class="section-title">访问复审（定期确认与回收用户权限）</div>
+        <div class="form-row">
+          <input type="text" id="certName" placeholder="活动名称（必填）" style="width:160px">
+          <select id="certScopeType">
+            <option value="dept">按部门</option>
+            <option value="users">按用户</option>
+          </select>
+          <input type="text" id="certScopeValue" placeholder="部门ID 或 用户ID（逗号分隔）" style="width:220px">
+          <input type="datetime-local" id="certDueDate" style="width:200px">
+          <select id="certAutoAction">
+            <option value="revoke">到期默认撤销</option>
+            <option value="keep">到期默认保留</option>
+          </select>
+          <button class="btn btn-primary" onclick="createCertification()">创建复审活动</button>
+        </div>
+        <button class="btn btn-outline" onclick="loadCertifications()" style="margin:10px 0">刷新列表</button>
+        <div id="certMsg" class="message"></div>
+        <table>
+          <thead><tr><th>名称</th><th>状态</th><th>范围</th><th>截止日</th><th>待审/保留/撤销</th><th>到期处置</th><th>操作</th></tr></thead>
+          <tbody id="certTableBody"></tbody>
+        </table>
+        <div id="certDetail"></div>
+      </div>
+
+      <!-- 工作流引擎 -->
+      <div class="panel" id="panel-wf">
+        <div class="section-title">工作流引擎（多级审批编排：approval 审批 / condition 条件 / action 动作）</div>
+        <div class="form-row">
+          <input type="text" id="wfName" placeholder="名称（如 访问请求-两级审批）" style="width:170px">
+          <input type="text" id="wfType" placeholder="类型（access_request）" value="access_request" style="width:140px">
+          <textarea id="wfDef" placeholder='节点 JSON：[{"type":"approval","name":"部门审批","approver":{"type":"role","id":"角色ID"}},{"type":"approval","name":"安全审批","approver":{"type":"user","id":"用户ID"}}]' style="width:100%;height:70px;margin:6px 0"></textarea>
+          <button class="btn btn-primary" onclick="createWorkflow()">创建工作流</button>
+          <button class="btn btn-outline" onclick="loadWorkflows()">刷新</button>
+          <button class="btn btn-outline" onclick="loadTasks()">待办审批</button>
+        </div>
+        <div id="wfMsg" class="message"></div>
+        <table>
+          <thead><tr><th>名称</th><th>类型</th><th>节点数</th><th>状态</th><th>操作</th></tr></thead>
+          <tbody id="wfTableBody"></tbody>
+        </table>
+        <div id="taskPanel" style="margin-top:12px"></div>
+      </div>
+
+      <!-- 即时访问 JIT -->
+      <div class="panel" id="panel-jit">
+        <div class="section-title">即时访问 JIT（按需限时提权，到期自动回收）</div>
+        <button class="btn btn-outline" onclick="loadJitGrants()" style="margin:10px 0">刷新（含到期回收）</button>
+        <div id="jitMsg" class="message"></div>
+        <table>
+          <thead><tr><th>申请用户</th><th>角色</th><th>理由</th><th>时长(分)</th><th>状态</th><th>过期时间</th><th>审批人</th><th>操作</th></tr></thead>
+          <tbody id="jitTableBody"></tbody>
+        </table>
+      </div>
+
+      <!-- 权限分析 -->
+      <div class="panel" id="panel-an">
+        <div class="section-title">权限分析（策略违规检测 + 角色挖掘）</div>
+        <button class="btn btn-outline" onclick="loadViolations()" style="margin:10px 0">🛡️ 检测违规</button>
+        <button class="btn btn-outline" onclick="loadRoleMining()" style="margin:10px 0">⛏️ 角色挖掘</button>
+        <div id="anMsg" class="message"></div>
+        <div id="anViolations"></div>
+        <div id="anMining"></div>
+      </div>
+
+      <!-- 应急访问 -->
+      <div class="panel" id="panel-bg">
+        <div class="section-title">应急访问 Break-glass（免审批 + TOTP 强认证 + 事后审查）</div>
+        <button class="btn btn-outline" onclick="loadBreakglass()" style="margin:10px 0">刷新（含到期回收）</button>
+        <div id="bgMsg" class="message"></div>
+        <table>
+          <thead><tr><th>用户</th><th>理由</th><th>时长(分)</th><th>状态</th><th>开始</th><th>结束</th><th>审查人</th><th>操作</th></tr></thead>
+          <tbody id="bgTableBody"></tbody>
+        </table>
+      </div>
+
+      <!-- 特权账号 -->
+      <div class="panel" id="panel-pa">
+        <div class="section-title">特权账号发现与登记（管理员 / 服务 / 共享）</div>
+        <button class="btn btn-outline" onclick="paDiscover()" style="margin:10px 0">🛰️ 自动发现</button>
+        <button class="btn btn-outline" onclick="loadPa()" style="margin:10px 0">刷新清单</button>
+        <div id="paMsg" class="message"></div>
+        <div id="paStats"></div>
+        <table>
+          <thead><tr><th>名称</th><th>类型</th><th>来源</th><th>风险</th><th>状态</th><th>负责人</th><th>审查</th><th>保险库</th><th>操作</th></tr></thead>
+          <tbody id="paTableBody"></tbody>
+        </table>
+      </div>
+
+      <!-- Webhook -->
+      <div class="panel" id="panel-wh">
+        <div class="section-title">Webhook 事件流（审计动作事件推送，HMAC-SHA256 签名）</div>
+        <div class="section-title" style="font-size:14px;margin-top:8px">新建订阅：URL <input id="whUrl" placeholder="https://..." style="width:260px"> 密钥 <input id="whSecret" placeholder="secret"> 事件 <input id="whEvents" placeholder="user.*,access.* 或 *" value="*" style="width:200px"> <button class="btn btn-outline" onclick="whCreate()">创建</button></div>
+        <div id="whMsg" class="message"></div>
+        <table>
+          <thead><tr><th>URL</th><th>事件</th><th>状态</th><th>最近投递</th><th>结果</th><th>操作</th></tr></thead>
+          <tbody id="whTableBody"></tbody>
+        </table>
+      </div>
+
+      <!-- 用户管理 -->
+      <div class="panel active" id="panel-users">
+        <div class="section-title">用户列表</div>
+        <div class="form-row">
+          <input type="text" id="newUsername" placeholder="用户名">
+          <input type="text" id="newEmail" placeholder="邮箱（可选）">
+          <input type="text" id="newPhone" placeholder="手机号（可选）">
+          <input type="password" id="newPassword" placeholder="初始密码（≥8位含字母数字）">
+          <button class="btn btn-primary" onclick="createUser()">创建用户</button>
+        </div>
+        <div class="form-row">
+          <button class="btn btn-outline" onclick="openImportModal()">📥 批量导入用户</button>
+          <button class="btn btn-outline" onclick="exportUsers()">📤 导出用户</button>
+          <span style="color:#999;font-size:12px">导入 CSV 列：username,email,phone,password,department</span>
+        </div>
+        <div id="userMsg" class="message"></div>
+        <table id="userTable">
+          <thead><tr><th>用户名</th><th>租户</th><th>邮箱</th><th>手机号</th><th>部门</th><th>状态</th><th>有效期</th><th>角色</th><th>操作</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+
+      <!-- 角色权限 -->
+      <div class="panel" id="panel-roles">
+        <div class="section-title">角色列表</div>
+        <div class="form-row">
+          <input type="text" id="roleName" placeholder="角色名">
+          <input type="text" id="roleDesc" placeholder="描述">
+          <button class="btn btn-primary" onclick="createRole()">创建角色</button>
+        </div>
+        <div id="roleMsg" class="message"></div>
+        <div id="rolesContainer"></div>
+        <div class="section-title">职责分离（互斥规则）</div>
+        <div class="form-row">
+          <select id="sodRoleA"></select>
+          <span>与</span>
+          <select id="sodRoleB"></select>
+          <button class="btn btn-primary" onclick="addSodRule()">添加互斥</button>
+        </div>
+        <div id="sodMsg" class="message"></div>
+        <div id="sodContainer"></div>
+      </div>
+
+      <!-- 用户组 -->
+      <div class="panel" id="panel-groups">
+        <div class="section-title">用户组（组内成员继承组角色）</div>
+        <div class="form-row">
+          <input type="text" id="groupName" placeholder="组名">
+          <input type="text" id="groupDesc" placeholder="描述">
+          <button class="btn btn-primary" onclick="createGroup()">创建组</button>
+        </div>
+        <div id="groupMsg" class="message"></div>
+        <div id="groupsContainer"></div>
+      </div>
+
+      <!-- 组织架构 -->
+      <div class="panel" id="panel-departments">
+        <div class="section-title">部门管理</div>
+        <div class="form-row">
+          <input type="text" id="deptName" placeholder="部门名">
+          <select id="deptParent"><option value="">无上级部门</option></select>
+          <button class="btn btn-primary" onclick="createDept()">创建部门</button>
+        </div>
+        <div id="deptMsg" class="message"></div>
+        <table id="deptTable">
+          <thead><tr><th>部门名</th><th>上级部门</th><th>操作</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+
+      <!-- 会话管理 -->
+      <div class="panel" id="panel-sessions">
+        <div class="section-title">在线会话</div>
+        <button class="btn btn-outline" onclick="loadSessions()" style="margin-bottom:12px">刷新</button>
+        <div id="sessionMsg" class="message"></div>
+        <table id="sessionTable">
+          <thead><tr><th>用户</th><th>设备</th><th>IP</th><th>状态</th><th>登录时间</th><th>最近活跃</th><th>操作</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+
+      <!-- 安全策略 -->
+      <div class="panel" id="panel-settings">
+        <div class="section-title">密码与登录安全策略</div>
+        <div id="settingsMsg" class="message"></div>
+        <div class="settings-grid">
+          <div class="field"><label>最小密码长度</label><input type="number" id="set_min_password_length" min="6" max="64"></div>
+          <div class="field"><label>需包含字母 (1/0)</label><input type="number" id="set_require_letter" min="0" max="1"></div>
+          <div class="field"><label>需包含数字 (1/0)</label><input type="number" id="set_require_number" min="0" max="1"></div>
+          <div class="field"><label>需包含特殊字符 (1/0)</label><input type="number" id="set_require_special" min="0" max="1"></div>
+          <div class="field"><label>历史密码防重用条数（0=关闭）</label><input type="number" id="set_password_history_count" min="0" max="24"></div>
+          <div class="field"><label>密码有效期天数（0=永不过期）</label><input type="number" id="set_password_max_age_days" min="0" max="1095"></div>
+          <div class="field"><label>单用户最大并发会话数（0=不限）</label><input type="number" id="set_max_sessions_per_user" min="0" max="100"></div>
+          <div class="field"><label>会话空闲超时（分钟，0=关闭）</label><input type="number" id="set_session_idle_timeout_minutes" min="0" max="1440"></div>
+          <div class="field"><label>登录失败锁定次数</label><input type="number" id="set_login_fail_lock_count" min="1" max="20"></div>
+          <div class="field"><label>锁定时长（分钟）</label><input type="number" id="set_login_fail_lock_minutes" min="1" max="1440"></div>
+          <div class="field"><label>审计日志留存天数（0=永久保留）</label><input type="number" id="set_audit_retention_days" min="0" max="36500"></div>
+        </div>
+        <button class="btn btn-primary" onclick="saveSettings()" style="margin-top:16px">保存安全策略</button>
+        <div class="section-title" style="margin-top:20px">SCIM 2.0 目录同步</div>
+        <div class="form-row">
+          <span id="scimStatus" style="color:#999">状态加载中...</span>
+          <button class="btn btn-primary" onclick="regenerateScimToken()">生成/重置 SCIM Token</button>
+          <span style="font-size:12px;color:#999">上游身份源用 <code>Authorization: Bearer &lt;token&gt;</code> 访问 <code>/scim/v2</code></span>
+        </div>
+        <div class="message" id="scimMsg"></div>
+      </div>
+
+      <!-- 审计日志 -->
+      <div class="panel" id="panel-audit">
+        <div class="section-title">审计日志</div>
+        <button class="btn btn-outline" onclick="loadAuditLogs()" style="margin-bottom:12px">刷新</button>
+        <button class="btn btn-outline" onclick="exportAuditLogs()" style="margin-bottom:12px">📤 导出 CSV</button>
+        <table id="auditTable">
+          <thead><tr><th>时间</th><th>用户</th><th>操作</th><th>IP</th><th>详情</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+
+      <!-- 凭据保险库 -->
+      <div class="panel" id="panel-vault">
+        <div class="section-title">凭据保险库（密码保险库雏形）</div>
+        <div id="vaultMsg" class="message"></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+          <input type="text" id="credName" placeholder="名称（必填）" style="width:140px">
+          <input type="text" id="credSystem" placeholder="归属系统" style="width:140px">
+          <input type="text" id="credUsername" placeholder="用户名" style="width:140px">
+          <input type="password" id="credPassword" placeholder="密码（必填）" style="width:140px">
+          <input type="text" id="credNote" placeholder="备注" style="width:140px">
+          <button class="btn btn-primary" onclick="createCredential()">保存凭据</button>
+          <button class="btn btn-outline" onclick="loadCredentials()">刷新</button>
+        </div>
+        <table>
+          <thead><tr><th>名称</th><th>系统</th><th>用户名</th><th>备注</th><th>操作</th></tr></thead>
+          <tbody id="credTableBody"></tbody>
+        </table>
+      </div>
+
+      <!-- 权限审计台账 -->
+      <div class="panel" id="panel-ledger">
+        <div class="section-title">权限审计台账（谁拥有什么权限）</div>
+        <div style="display:flex;gap:8px;margin-bottom:12px">
+          <input type="text" id="ledgerQuery" placeholder="按用户名检索" style="width:200px">
+          <button class="btn btn-primary" onclick="loadLedger()">检索</button>
+          <button class="btn btn-outline" onclick="exportLedger()">📤 导出 CSV</button>
+        </div>
+        <table>
+          <thead><tr><th>用户</th><th>状态</th><th>角色（来源）</th><th>权限</th></tr></thead>
+          <tbody id="ledgerTableBody"></tbody>
+        </table>
+      </div>
+
+      <!-- OIDC 应用管理 -->
+      <div class="panel" id="panel-oidc">
+        <div class="section-title">OIDC 应用（标准 OpenID Connect 客户端）</div>
+        <div id="oidcMsg" class="message"></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+          <input type="text" id="oidcName" placeholder="应用名称（必填）" style="width:180px">
+          <input type="text" id="oidcUris" placeholder="回调地址，逗号分隔（必填）" style="width:360px">
+          <button class="btn btn-primary" onclick="createOidcClient()">创建应用</button>
+          <button class="btn btn-outline" onclick="loadOidcClients()">刷新</button>
+        </div>
+        <table>
+          <thead><tr><th>应用名</th><th>Client ID</th><th>回调地址</th><th>Client Secret</th><th>操作</th></tr></thead>
+          <tbody id="oidcTableBody"></tbody>
+        </table>
+      </div>
+
+      <!-- 生命周期自动化（IGA joiner / mover / leaver） -->
+      <div class="panel" id="panel-lifecycle">
+        <div class="section-title">入职（Joiner）</div>
+        <div class="form-row">
+          <input type="text" id="ljUsername" placeholder="用户名（必填）">
+          <input type="password" id="ljPassword" placeholder="初始密码（必填）">
+          <input type="text" id="ljEmail" placeholder="邮箱（可选）">
+          <input type="text" id="ljPhone" placeholder="手机号（可选）">
+          <select id="ljDept"></select>
+          <button class="btn btn-primary" onclick="lifecycleJoin()">入职开通</button>
+        </div>
+        <label style="font-size:12px;color:#666"><input type="checkbox" id="ljMustChange"> 首次登录强制改密</label>
+        <div id="ljMsg" class="message"></div>
+
+        <div class="section-title">转岗（Mover）</div>
+        <div class="form-row">
+          <select id="mvUser"></select>
+          <select id="mvDept"></select>
+          <button class="btn btn-primary" onclick="lifecycleMove()">转岗调整</button>
+        </div>
+        <div class="form-row" style="font-size:13px;color:#666">
+          <span>加角色：</span><select id="mvAddRole" multiple size="2"></select>
+          <span>删角色：</span><select id="mvRemoveRole" multiple size="2"></select>
+        </div>
+        <div id="mvMsg" class="message"></div>
+
+        <div class="section-title">离职（Leaver）</div>
+        <div class="form-row">
+          <select id="lvUser"></select>
+          <select id="lvMode"><option value="disabled">停用</option><option value="archived">归档</option></select>
+          <label style="font-size:12px;color:#666"><input type="checkbox" id="lvRevokeRoles" checked> 回收直接角色</label>
+          <button class="btn btn-primary" onclick="lifecycleLeave()">离职回收</button>
+        </div>
+        <div id="lvMsg" class="message"></div>
+      </div>
+    </div>
+  </div>
+  <div class="modal" id="importModal">
+    <div class="modal-content">
+      <h3>批量导入用户（CSV）</h3>
+      <textarea id="importCsv" placeholder="username,email,phone,password,department&#10;zhangsan,zhangsan@example.com,,Passw0rd123,技术部&#10;lisi,,13800138000,Passw0rd456,"></textarea>
+      <div class="message" id="importMsg"></div>
+      <div class="btn-group">
+        <button class="btn-outline" onclick="closeImportModal()">取消</button>
+        <button class="btn-primary" onclick="doImport()">导入</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const API = 'http://localhost:8080';
+
+    function getCookie(name) {
+      const match = document.cookie.match(new RegExp('(^|; )' + name + '=([^;]*)'));
+      return match ? decodeURIComponent(match[2]) : null;
+    }
+
+    function csrfHeaders() {
+      const token = getCookie('csrf_token');
+      return token ? { 'X-CSRF-Token': token } : {};
+    }
+
+    async function checkAuth() {
+      try {
+        const res = await fetch(`${API}/auth/me`, { credentials: 'include' });
+        if (!res.ok) { location.href = '/login.html'; return false; }
+        const data = await res.json();
+        const isAdmin = data.roles && data.roles.some(r => r.name === 'admin');
+        if (!isAdmin) {
+          document.getElementById('accessDenied').style.display = 'block';
+          return false;
+        }
+        document.getElementById('mainContent').style.display = 'block';
+        document.getElementById('accessDenied').style.display = 'none';
+        init();
+        return true;
+      } catch (e) {
+        location.href = '/login.html';
+        return false;
+      }
+    }
+
+    async function api(path, opts = {}) {
+      const res = await fetch(`${API}${path}`, {
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json', ...csrfHeaders(), ...(opts.headers || {}) },
+        ...opts
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || '请求失败');
+      return data;
+    }
+
+    function showTab(name) {
+      const order = ['users','roles','abac','approvals','sa','gov','groups','departments','sessions','settings','audit','vault','ledger','oidc','lifecycle'];
+      document.querySelectorAll('.tabs button').forEach((b, i) => b.classList.toggle('active', order[i] === name));
+      document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+      document.getElementById('panel-' + name).classList.add('active');
+      if (name === 'users') loadUsers();
+      if (name === 'roles') { loadRoles(); loadSod(); }
+      if (name === 'abac') loadAbacPolicies();
+      if (name === 'approvals') loadAccessRequests();
+      if (name === 'sa') loadServiceAccounts();
+      if (name === 'gov') loadDefaultAccounts();
+      if (name === 'groups') loadGroups();
+      if (name === 'departments') loadDepartments();
+      if (name === 'sessions') loadSessions();
+      if (name === 'settings') loadSettings();
+      if (name === 'audit') loadAuditLogs();
+      if (name === 'vault') loadCredentials();
+      if (name === 'ledger') loadLedger();
+      if (name === 'oidc') loadOidcClients();
+      if (name === 'lifecycle') loadLifecycle();
+    }
+
+    function showMsg(el, text, type) {
+      el.className = 'message ' + type;
+      el.textContent = text;
+    }
+
+    async function init() {
+      loadUsers();
+    }
+
+    // ===== 用户管理 =====
+    // 设置/清除账户有效期
+    async function setExpiry(userId, username) {
+      const cur = prompt(`为 ${username} 设置有效期（YYYY-MM-DD），留空则清除`);
+      if (cur === null) return;
+      try {
+        await api(`/admin/users/${userId}/expiry`, { method: 'PUT', body: JSON.stringify({ expiresAt: cur.trim() }) });
+        showMsg(document.getElementById('userMsg'), cur.trim() ? '有效期已设置' : '有效期已清除', 'success');
+        loadUsers();
+      } catch (e) { showMsg(document.getElementById('userMsg'), e.message, 'error'); }
+    }
+
+    async function loadUsers() {
+      try {
+        const [userData, roleData, deptData] = await Promise.all([
+          api('/admin/users'),
+          api('/admin/roles'),
+          api('/admin/departments')
+        ]);
+        const roles = roleData.roles;
+        const depts = deptData.departments;
+        const tbody = document.querySelector('#userTable tbody');
+        tbody.innerHTML = '';
+        for (const u of userData.users) {
+          const tr = document.createElement('tr');
+          const roleBadges = (u.roles || []).map(r => `<span class="badge role">${r.name}</span>`).join('') || '<span style="color:#999">无</span>';
+          const assignedRoleIds = (u.roles || []).map(r => r.id);
+          const deptName = u.department ? u.department.name : '<span style="color:#999">-</span>';
+          const statusMap = { active: '正常', disabled: '禁用', archived: '归档' };
+          tr.innerHTML = `
+            <td>${u.username}${u.username === 'admin' ? ' <span class="badge permission">内置</span>' : ''}</td>
+            <td><span class="badge" style="background:#eef;color:#556">${u.realm || 'default'}</span></td>
+            <td>${u.email || '<span style="color:#999">-</span>'}</td>
+            <td>${u.phone || '<span style="color:#999">-</span>'}</td>
+            <td>
+              <span id="dept-${u.id}">${deptName}</span>
+              <select class="dept-select" data-user="${u.id}" style="padding:4px;border-radius:4px;border:1px solid #ddd;font-size:12px">
+                <option value="">改部门...</option>
+                ${depts.map(d => `<option value="${d.id}" ${u.department_id === d.id ? 'selected' : ''}>${d.name}</option>`).join('')}
+              </select>
+            </td>
+            <td><span class="badge ${u.status}">${statusMap[u.status] || u.status}</span></td>
+            <td>${u.account_expires_at ? `<span style="font-size:12px;color:#b06000">${u.account_expires_at.slice(0,10)}</span>` : '<span style="color:#999">-</span>'}</td>
+            <td id="roles-${u.id}">${roleBadges}</td>
+            <td>
+              <select class="role-select" data-user="${u.id}" style="padding:4px;border-radius:4px;border:1px solid #ddd;font-size:12px">
+                <option value="">分配角色...</option>
+                ${roles.filter(r => !assignedRoleIds.includes(r.id)).map(r => `<option value="${r.id}">${r.name}</option>`).join('')}
+              </select>
+              <button class="btn btn-outline" onclick="forceResetPwd('${u.id}', '${u.username}')">重置密码</button>
+              <button class="btn btn-outline" onclick="setExpiry('${u.id}', '${u.username}')">设有效期</button>
+              <button class="btn btn-danger" onclick="toggleStatus('${u.id}', '${u.username}', '${u.status}')">${u.status === 'active' ? '禁用' : '启用'}</button>
+              ${u.username !== 'admin' ? `<button class="btn btn-danger" onclick="deleteUser('${u.id}', '${u.username}')">删除</button>` : ''}
+            </td>`;
+          tbody.appendChild(tr);
+          tr.querySelector('.role-select').addEventListener('change', async (e) => {
+            const roleId = e.target.value;
+            if (!roleId) return;
+            try {
+              await api(`/admin/users/${u.id}/roles`, { method: 'PUT', body: JSON.stringify({ roleId }) });
+              loadUsers();
+            } catch (err) { alert(err.message); }
+          });
+          tr.querySelector('.dept-select').addEventListener('change', async (e) => {
+            const departmentId = e.target.value;
+            try {
+              await api(`/admin/users/${u.id}/department`, { method: 'PUT', body: JSON.stringify({ departmentId }) });
+              loadUsers();
+            } catch (err) { alert(err.message); }
+          });
+        }
+      } catch (e) {
+        showMsg(document.getElementById('userMsg'), e.message, 'error');
+      }
+    }
+
+    async function createUser() {
+      const username = document.getElementById('newUsername').value.trim();
+      const email = document.getElementById('newEmail').value.trim();
+      const phone = document.getElementById('newPhone').value.trim();
+      const password = document.getElementById('newPassword').value;
+      const msgEl = document.getElementById('userMsg');
+      if (!username || !password) { showMsg(msgEl, '请填写用户名和密码', 'error'); return; }
+      try {
+        await api('/admin/users', { method: 'POST', body: JSON.stringify({ username, email, phone, password }) });
+        showMsg(msgEl, '用户创建成功', 'success');
+        ['newUsername','newEmail','newPhone','newPassword'].forEach(id => document.getElementById(id).value = '');
+        loadUsers();
+      } catch (e) { showMsg(msgEl, e.message, 'error'); }
+    }
+
+    async function toggleStatus(userId, username, currentStatus) {
+      const next = currentStatus === 'active' ? 'disabled' : 'active';
+      if (!confirm(`确定要${next === 'disabled' ? '禁用' : '启用'}用户 ${username} 吗？${next === 'disabled' ? '禁用后将立即下线其所有会话。' : ''}`)) return;
+      try {
+        await api(`/admin/users/${userId}/status`, { method: 'PUT', body: JSON.stringify({ status: next }) });
+        loadUsers();
+      } catch (e) { alert(e.message); }
+    }
+
+    async function forceResetPwd(userId, username) {
+      const newPassword = prompt(`为用户 ${username} 设置新密码（需满足密码策略）`);
+      if (!newPassword) return;
+      try {        const data = await api(`/admin/users/${userId}/password`, { method: 'PUT', body: JSON.stringify({ newPassword }) });
+        alert(data.message || '密码已重置');
+        loadUsers();
+      } catch (e) { alert(e.message); }
+    }
+
+    async function deleteUser(userId, username) {
+      if (!confirm(`确定要物理删除用户 ${username} 吗？此操作不可恢复！`)) return;
+      try {
+        await api(`/admin/users/${userId}`, { method: 'DELETE' });
+        loadUsers();
+      } catch (e) { alert(e.message); }
+    }
+
+    // ===== 导入/导出 =====
+    function openImportModal() {
+      document.getElementById('importCsv').value = '';
+      document.getElementById('importMsg').className = 'message';
+      document.getElementById('importModal').classList.add('show');
+    }
+    function closeImportModal() {
+      document.getElementById('importModal').classList.remove('show');
+    }
+    async function doImport() {
+      const csv = document.getElementById('importCsv').value;
+      const msgEl = document.getElementById('importMsg');
+      if (!csv.trim()) { showMsg(msgEl, '请输入 CSV 内容', 'error'); return; }
+      try {
+        const data = await api('/admin/users/import', { method: 'POST', body: JSON.stringify({ csv }) });
+        showMsg(msgEl, `导入完成：成功 ${data.created.length} 个，失败 ${data.errors.length} 个`, data.errors.length ? 'error' : 'success');
+        if (data.errors.length) {
+          console.log(data.errors);
+          showMsg(msgEl, `导入完成：成功 ${data.created.length}，失败 ${data.errors.length}（详见控制台）`, 'error');
+        }
+        loadUsers();
+      } catch (e) { showMsg(msgEl, e.message, 'error'); }
+    }
+    async function exportUsers() {
+      try {
+        const res = await fetch(`${API}/admin/users/export`, { credentials: 'include' });
+        if (!res.ok) throw new Error('导出失败');
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = 'users.csv'; a.click();
+        URL.revokeObjectURL(url);
+      } catch (e) { alert(e.message); }
+    }
+    async function exportAuditLogs() {
+      try {
+        const res = await fetch(`${API}/admin/audit-logs/export`, { credentials: 'include' });
+        if (!res.ok) throw new Error('导出失败');
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = 'audit-logs.csv'; a.click();
+        URL.revokeObjectURL(url);
+      } catch (e) { alert(e.message); }
+    }
+
+    // ===== 角色 =====
+    async function loadRoles() {
+      try {
+        const data = await api('/admin/roles');
+        const perms = (await api('/admin/permissions')).permissions;
+        const container = document.getElementById('rolesContainer');
+        container.innerHTML = '';
+        for (const role of data.roles) {
+          const div = document.createElement('div');
+          div.style.cssText = 'border:1px solid #eee;border-radius:8px;padding:16px;margin-bottom:12px';
+          const has = (role.permissions || []).map(p => p.id);
+          div.innerHTML = `
+            <div style="margin-bottom:8px">
+              <strong style="font-size:15px">${role.name}</strong>
+              <span style="color:#999;font-size:13px;margin-left:8px">${role.description || ''}</span>
+              <span class="badge permission">${role.memberCount || 0} 人</span>
+              ${role.name === 'admin' ? ' <span class="badge permission">内置</span>' : ''}
+            </div>
+            <div class="perms-list">
+              ${perms.map(p => `<label><input type="checkbox" data-role="${role.id}" data-perm="${p.id}" ${has.includes(p.id) ? 'checked' : ''} ${role.name === 'admin' ? 'disabled' : ''}> ${p.name}</label>`).join('')}
+            </div>
+            ${role.name !== 'admin' ? `<button class="btn btn-primary" onclick="saveRolePerms('${role.id}')">保存权限</button>` : ''}
+          `;
+          container.appendChild(div);
+        }
+      } catch (e) { alert(e.message); }
+    }
+
+    // ===== 职责分离（SoD）=====
+    async function loadSod() {
+      try {
+        const [roles, sod] = await Promise.all([api('/admin/roles'), api('/admin/sod-rules')]);
+        const selA = document.getElementById('sodRoleA');
+        const selB = document.getElementById('sodRoleB');
+        const opts = roles.roles.map(r => `<option value="${r.id}">${r.name}</option>`).join('');
+        selA.innerHTML = opts;
+        selB.innerHTML = opts;
+        const container = document.getElementById('sodContainer');
+        const rules = sod.rules.filter(r => r.type === 'role');
+        container.innerHTML = rules.length
+          ? `<table><thead><tr><th>角色A</th><th>角色B</th><th>操作</th></tr></thead><tbody>
+              ${rules.map(r => `<tr><td>${r.leftName}</td><td>${r.rightName}</td>
+                <td><button class="btn" onclick="deleteSodRule('${r.id}')">删除</button></td></tr>`).join('')}
+             </tbody></table>`
+          : '<div style="color:#999;padding:8px">暂无互斥规则</div>';
+      } catch (e) { alert(e.message); }
+    }
+
+    async function addSodRule() {
+      const leftId = document.getElementById('sodRoleA').value;
+      const rightId = document.getElementById('sodRoleB').value;
+      const msgEl = document.getElementById('sodMsg');
+      if (!leftId || !rightId || leftId === rightId) { showMsg(msgEl, '请选择两个不同的角色', 'error'); return; }
+      try {
+        await api('/admin/sod-rules', { method: 'POST', body: JSON.stringify({ type: 'role', leftId, rightId }) });
+        showMsg(msgEl, '互斥规则已添加', 'success');
+        loadSod();
+      } catch (e) { showMsg(msgEl, e.message, 'error'); }
+    }
+
+    async function deleteSodRule(id) {
+      const msgEl = document.getElementById('sodMsg');
+      try {
+        await api(`/admin/sod-rules/${id}`, { method: 'DELETE' });
+        showMsg(msgEl, '互斥规则已删除', 'success');
+        loadSod();
+      } catch (e) { showMsg(msgEl, e.message, 'error'); }
+    }
+
+    async function saveRolePerms(roleId) {
+      const checked = [...document.querySelectorAll(`input[data-role="${roleId}"]:checked`)].map(i => i.dataset.perm);
+      try {
+        await api(`/admin/roles/${roleId}/permissions`, { method: 'PUT', body: JSON.stringify({ permissionIds: checked }) });
+        loadRoles();
+      } catch (e) { alert(e.message); }
+    }
+
+    async function createRole() {
+      const name = document.getElementById('roleName').value.trim();
+      const description = document.getElementById('roleDesc').value.trim();
+      const msgEl = document.getElementById('roleMsg');
+      if (!name) { showMsg(msgEl, '请输入角色名', 'error'); return; }
+      try {
+        await api('/admin/roles', { method: 'POST', body: JSON.stringify({ name, description }) });
+        showMsg(msgEl, '角色创建成功', 'success');
+        document.getElementById('roleName').value = '';
+        document.getElementById('roleDesc').value = '';
+        loadRoles();
+      } catch (e) { showMsg(msgEl, e.message, 'error'); }
+    }
+
+    // ===== 用户组 =====
+    let cachedUsers = [];
+    let cachedRoles = [];
+
+    async function loadGroups() {
+      try {
+        const [groupData, userData, roleData] = await Promise.all([
+          api('/admin/groups'),
+          api('/admin/users'),
+          api('/admin/roles')
+        ]);
+        cachedUsers = userData.users;
+        cachedRoles = roleData.roles;
+        const container = document.getElementById('groupsContainer');
+        container.innerHTML = '';
+        for (const g of groupData.groups) {
+          const div = document.createElement('div');
+          div.className = 'group-card';
+          const memberIds = (g.members || []).map(m => m.id);
+          const roleIds = (g.roles || []).map(r => r.id);
+          div.innerHTML = `
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+              <strong style="font-size:15px">${g.name}</strong>
+              <div>
+                <span class="badge permission">${g.memberCount} 人</span>
+                <button class="btn btn-danger" onclick="deleteGroup('${g.id}','${g.name}')">删除组</button>
+              </div>
+            </div>
+            <div style="margin-bottom:10px">
+              <span style="color:#555;font-size:13px">组角色（成员自动继承）：</span>
+              <div class="perms-list">
+                ${cachedRoles.map(r => `<label><input type="checkbox" data-group="${g.id}" data-role="${r.id}" ${roleIds.includes(r.id) ? 'checked' : ''}> ${r.name}</label>`).join('')}
+              </div>
+              <button class="btn btn-primary" onclick="saveGroupRoles('${g.id}')">保存组角色</button>
+            </div>
+            <div>
+              <span style="color:#555;font-size:13px">成员：</span>
+              ${(g.members || []).map(m => `<span class="badge role">${m.username} <a href="#" onclick="removeGroupMember('${g.id}','${m.id}','${m.username}');return false;" style="color:#dc3545">✕</a></span>`).join('') || '<span style="color:#999;font-size:12px">暂无成员</span>'}
+              <select class="gm-select" data-group="${g.id}" style="padding:4px;border-radius:4px;border:1px solid #ddd;font-size:12px;margin-left:8px">
+                <option value="">添加成员...</option>
+                ${cachedUsers.filter(u => !memberIds.includes(u.id)).map(u => `<option value="${u.id}">${u.username}</option>`).join('')}
+              </select>
+            </div>
+          `;
+          container.appendChild(div);
+          div.querySelector('.gm-select').addEventListener('change', async (e) => {
+            const userId = e.target.value;
+            if (!userId) return;
+            try {
+              await api(`/admin/groups/${g.id}/members`, { method: 'POST', body: JSON.stringify({ userId }) });
+              loadGroups();
+            } catch (err) { alert(err.message); }
+          });
+        }
+      } catch (e) { alert(e.message); }
+    }
+
+    async function createGroup() {
+      const name = document.getElementById('groupName').value.trim();
+      const description = document.getElementById('groupDesc').value.trim();
+      const msgEl = document.getElementById('groupMsg');
+      if (!name) { showMsg(msgEl, '请输入组名', 'error'); return; }
+      try {
+        await api('/admin/groups', { method: 'POST', body: JSON.stringify({ name, description }) });
+        showMsg(msgEl, '组创建成功', 'success');
+        document.getElementById('groupName').value = '';
+        document.getElementById('groupDesc').value = '';
+        loadGroups();
+      } catch (e) { showMsg(msgEl, e.message, 'error'); }
+    }
+
+    async function saveGroupRoles(groupId) {
+      const roleIds = [...document.querySelectorAll(`input[data-group="${groupId}"]:checked`)].map(i => i.dataset.role);
+      try {
+        await api(`/admin/groups/${groupId}/roles`, { method: 'PUT', body: JSON.stringify({ roleIds }) });
+        loadGroups();
+      } catch (e) { alert(e.message); }
+    }
+
+    async function deleteGroup(groupId, name) {
+      if (!confirm(`确定删除组 ${name} 吗？`)) return;
+      try {
+        await api(`/admin/groups/${groupId}`, { method: 'DELETE' });
+        loadGroups();
+      } catch (e) { alert(e.message); }
+    }
+
+    async function removeGroupMember(groupId, userId, username) {
+      if (!confirm(`将 ${username} 移出该组？`)) return;
+      try {
+        await api(`/admin/groups/${groupId}/members/${userId}`, { method: 'DELETE' });
+        loadGroups();
+      } catch (e) { alert(e.message); }
+    }
+
+    // ===== 部门 =====
+    async function loadDepartments() {
+      try {
+        const data = await api('/admin/departments');
+        const depts = data.departments;
+        const parentSel = document.getElementById('deptParent');
+        parentSel.innerHTML = '<option value="">无上级部门</option>' + depts.map(d => `<option value="${d.id}">${d.name}</option>`).join('');
+        const tbody = document.querySelector('#deptTable tbody');
+        tbody.innerHTML = '';
+        if (!depts.length) {
+          tbody.innerHTML = '<tr><td colspan="3" class="empty">暂无部门</td></tr>';
+          return;
+        }
+        const nameOf = (id) => depts.find(d => d.id === id)?.name || '-';
+        for (const d of depts) {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td>${d.name}</td>
+            <td>${d.parent_id ? nameOf(d.parent_id) : '-'}</td>
+            <td>
+              <button class="btn btn-outline" onclick="renameDept('${d.id}','${d.name}')">重命名</button>
+              <button class="btn btn-danger" onclick="deleteDept('${d.id}','${d.name}')">删除</button>
+            </td>`;
+          tbody.appendChild(tr);
+        }
+      } catch (e) { alert(e.message); }
+    }
+
+    async function createDept() {
+      const name = document.getElementById('deptName').value.trim();
+      const parentId = document.getElementById('deptParent').value;
+      const msgEl = document.getElementById('deptMsg');
+      if (!name) { showMsg(msgEl, '请输入部门名', 'error'); return; }
+      try {
+        await api('/admin/departments', { method: 'POST', body: JSON.stringify({ name, parentId }) });
+        showMsg(msgEl, '部门创建成功', 'success');
+        document.getElementById('deptName').value = '';
+        loadDepartments();
+      } catch (e) { showMsg(msgEl, e.message, 'error'); }
+    }
+
+    async function renameDept(deptId, currentName) {
+      const name = prompt('请输入新部门名', currentName);
+      if (!name || name === currentName) return;
+      try {
+        await api(`/admin/departments/${deptId}`, { method: 'PUT', body: JSON.stringify({ name }) });
+        loadDepartments();
+      } catch (e) { alert(e.message); }
+    }
+
+    async function deleteDept(deptId, name) {
+      if (!confirm(`确定删除部门 ${name} 吗？`)) return;
+      try {
+        await api(`/admin/departments/${deptId}`, { method: 'DELETE' });
+        loadDepartments();
+      } catch (e) { alert(e.message); }
+    }
+
+    // ===== 会话管理 =====
+    async function loadSessions() {
+      try {
+        const data = await api('/admin/sessions');
+        const tbody = document.querySelector('#sessionTable tbody');
+        tbody.innerHTML = '';
+        if (!data.sessions.length) {
+          tbody.innerHTML = '<tr><td colspan="7" class="empty">暂无会话</td></tr>';
+          return;
+        }
+        for (const s of data.sessions) {
+          const tr = document.createElement('tr');
+          const statusMap = { active: '在线', revoked: '已下线' };
+          tr.innerHTML = `
+            <td>${s.username || '<span style="color:#999">-</span>'}</td>
+            <td>${s.device || '-'}</td>
+            <td>${s.ip || '-'}</td>
+            <td><span class="badge ${s.status}">${statusMap[s.status] || s.status}</span></td>
+            <td>${s.created_at}</td>
+            <td>${s.last_active_at}</td>
+            <td>${s.status === 'active' ? `<button class="btn btn-danger" onclick="forceOffline('${s.id}','${s.username || ''}')">强制下线</button>` : ''}</td>`;
+          tbody.appendChild(tr);
+        }
+      } catch (e) { alert(e.message); }
+    }
+
+    async function forceOffline(sessionId, username) {
+      if (!confirm(`确定强制下线该会话${username ? '（' + username + '）' : ''}？`)) return;
+      try {
+        await api(`/admin/sessions/${sessionId}/revoke`, { method: 'POST' });
+        loadSessions();
+      } catch (e) { alert(e.message); }
+    }
+
+    // ===== 安全策略 =====
+    async function loadSettings() {
+      try {
+        const data = await api('/admin/settings');
+        const s = data.settings;
+        for (const key of Object.keys(s)) {
+          const el = document.getElementById('set_' + key);
+          if (el) el.value = s[key];
+        }
+        loadScimStatus();
+      } catch (e) { alert(e.message); }
+    }
+
+    async function loadScimStatus() {
+      try {
+        const d = await api('/admin/scim/status');
+        document.getElementById('scimStatus').textContent = d.configured ? '✅ 已配置' : '⚠️ 未配置';
+      } catch (e) { alert(e.message); }
+    }
+
+    async function regenerateScimToken() {
+      const msgEl = document.getElementById('scimMsg');
+      try {
+        const d = await api('/admin/scim/token', { method: 'POST', body: '{}' });
+        showMsg(msgEl, `${d.message}：${d.token}`, 'success');
+        loadScimStatus();
+      } catch (e) { showMsg(msgEl, e.message, 'error'); }
+    }
+
+    async function saveSettings() {
+      const keys = ['min_password_length','require_letter','require_number','require_special','password_history_count','password_max_age_days','max_sessions_per_user','session_idle_timeout_minutes','login_fail_lock_count','login_fail_lock_minutes','audit_retention_days'];
+      const body = {};
+      for (const k of keys) {
+        const el = document.getElementById('set_' + k);
+        body[k] = String(parseInt(el.value, 10) || 0);
+      }
+      const msgEl = document.getElementById('settingsMsg');
+      try {
+        await api('/admin/settings', { method: 'PUT', body: JSON.stringify(body) });
+        showMsg(msgEl, '安全策略已保存', 'success');
+      } catch (e) { showMsg(msgEl, e.message, 'error'); }
+    }
+
+    // ===== 审计日志 =====
+    async function loadAuditLogs() {
+      try {
+        const data = await api('/admin/audit-logs?limit=100');
+        const tbody = document.querySelector('#auditTable tbody');
+        tbody.innerHTML = '';
+        if (!data.logs.length) {
+          tbody.innerHTML = '<tr><td colspan="5" class="empty">暂无日志</td></tr>';
+          return;
+        }
+        const actionNames = {
+          'user.register': '注册',
+          'auth.login': '登录',
+          'auth.login_failed': '登录失败',
+          'auth.login_locked': '登录锁定',
+          'auth.login_disabled': '登录被拒(禁用)',
+          'auth.login_totp_failed': 'TOTP失败',
+          'auth.logout': '登出',
+          'auth.must_change_password': '触发强制改密',
+          'user.bind_email': '绑定邮箱',
+          'user.bind_phone': '绑定手机号',
+          'user.create': '创建用户',
+          'user.status_change': '修改用户状态',
+          'user.delete': '删除用户',
+          'user.force_reset_password': '管理员重置密码',
+          'user.forced_password_change': '强制改密完成',
+          'user.change_password': '修改密码',
+          'user.reset_password': '重置密码',
+          'user.set_department': '设置部门',
+          'user.session_revoke': '自助下线会话',
+          'user.assign_role': '分配角色',
+          'user.remove_role': '移除角色',
+          'role.create': '创建角色',
+          'role.permission_update': '更新角色权限',
+          'group.create': '创建组',
+          'group.delete': '删除组',
+          'group.add_member': '添加组成员',
+          'group.remove_member': '移除组成员',
+          'group.set_roles': '更新组角色',
+          'dept.create': '创建部门',
+          'dept.rename': '重命名部门',
+          'dept.delete': '删除部门',
+          'session.force_offline': '强制下线会话',
+          'policy.update': '更新安全策略',
+          'user.import': '批量导入用户',
+          'user.totp_enable': '开启两步验证',
+          'user.totp_disable': '关闭两步验证',
+          'user.recovery_generate': '重新生成备用码',
+          'auth.login_recovery': '备用码登录',
+          'session.idle_timeout': '会话空闲超时',
+          'vault.create': '保存凭据',
+          'vault.delete': '删除凭据',
+          'vault.reveal': '查看凭据明文',
+          'oidc.authorize': 'OIDC授权',
+          'oidc.token': 'OIDC换发Token',
+          'oidc.client_create': '创建OIDC应用',
+          'oidc.client_delete': '删除OIDC应用',
+          'auth.login_expired': '登录被拒(账户过期)',
+          'user.set_expiry': '设置账户有效期',
+          'user.auto_disable_expired': '自动禁用过期账户'
+        };
+        for (const log of data.logs) {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td>${log.created_at}</td>
+            <td>${log.username || '<span style="color:#999">-</span>'}</td>
+            <td><span class="badge permission">${actionNames[log.action] || log.action}</span></td>
+            <td>${log.ip || '-'}</td>
+            <td style="font-size:12px;color:#666">${log.detail || ''}</td>
+          `;
+          tbody.appendChild(tr);
+        }
+      } catch (e) { alert(e.message); }
+    }
+
+    // ===== 凭据保险库 =====
+    async function loadCredentials() {
+      try {
+        const data = await api('/admin/credentials');
+        const tbody = document.getElementById('credTableBody');
+        tbody.innerHTML = '';
+        if (!data.credentials.length) {
+          tbody.innerHTML = '<tr><td colspan="5" class="empty">暂无凭据</td></tr>';
+          return;
+        }
+        for (const c of data.credentials) {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td>${c.name}</td>
+            <td>${c.system || '-'}</td>
+            <td>${c.username || '-'}</td>
+            <td style="font-size:12px;color:#666">${c.note || ''}</td>
+            <td>
+              <button class="btn btn-outline" onclick="revealCredential('${c.id}')">🔓 查看</button>
+              <button class="btn btn-outline" style="color:#dc3545" onclick="deleteCredential('${c.id}')">删除</button>
+            </td>`;
+          tbody.appendChild(tr);
+        }
+      } catch (e) { showMsg(document.getElementById('vaultMsg'), e.message, 'error'); }
+    }
+
+    async function createCredential() {
+      const body = {
+        name: document.getElementById('credName').value.trim(),
+        system: document.getElementById('credSystem').value.trim(),
+        username: document.getElementById('credUsername').value.trim(),
+        password: document.getElementById('credPassword').value,
+        note: document.getElementById('credNote').value.trim()
+      };
+      const msgEl = document.getElementById('vaultMsg');
+      if (!body.name || !body.password) { showMsg(msgEl, '名称和密码为必填项', 'error'); return; }
+      try {
+        await api('/admin/credentials', { method: 'POST', body: JSON.stringify(body) });
+        showMsg(msgEl, '凭据已保存', 'success');
+        document.getElementById('credName').value = document.getElementById('credSystem').value = document.getElementById('credUsername').value = document.getElementById('credPassword').value = document.getElementById('credNote').value = '';
+        loadCredentials();
+      } catch (e) { showMsg(msgEl, e.message, 'error'); }
+    }
+
+    async function revealCredential(id) {
+      if (!confirm('确定查看该凭据明文？此操作将记录审计日志。')) return;
+      try {
+        const c = await api(`/admin/credentials/${id}/reveal`);
+        const msgEl = document.getElementById('vaultMsg');
+        showMsg(msgEl, `凭据 [${c.name}] 明文: ${c.username ? c.username + ' / ' : ''}${c.password}`, 'info');
+      } catch (e) { showMsg(document.getElementById('vaultMsg'), e.message, 'error'); }
+    }
+
+    async function deleteCredential(id) {
+      if (!confirm('确定删除该凭据？')) return;
+      try {
+        await api(`/admin/credentials/${id}`, { method: 'DELETE' });
+        showMsg(document.getElementById('vaultMsg'), '凭据已删除', 'success');
+        loadCredentials();
+      } catch (e) { showMsg(document.getElementById('vaultMsg'), e.message, 'error'); }
+    }
+
+    // ===== 权限审计台账 =====
+    async function loadLedger() {
+      try {
+        const q = document.getElementById('ledgerQuery').value.trim();
+        const url = q ? `/admin/ledger?q=${encodeURIComponent(q)}` : '/admin/ledger';
+        const data = await api(url);
+        const tbody = document.getElementById('ledgerTableBody');
+        tbody.innerHTML = '';
+        if (!data.ledger.length) {
+          tbody.innerHTML = '<tr><td colspan="4" class="empty">暂无数据</td></tr>';
+          return;
+        }
+        for (const row of data.ledger) {
+          const tr = document.createElement('tr');
+          const roles = row.roles.map(r => `${r.name}<span style="color:#999;font-size:11px">(${r.source})</span>`).join(', ') || '<span style="color:#999">-</span>';
+          const perms = row.permissions.join(', ') || '<span style="color:#999">-</span>';
+          tr.innerHTML = `
+            <td>${row.username}</td>
+            <td>${row.status}</td>
+            <td style="font-size:12px">${roles}</td>
+            <td style="font-size:12px;color:#666">${perms}</td>`;
+          tbody.appendChild(tr);
+        }
+      } catch (e) { alert(e.message); }
+    }
+
+    async function exportLedger() {
+      const q = document.getElementById('ledgerQuery').value.trim();
+      const url = q ? `/admin/ledger/export?q=${encodeURIComponent(q)}` : '/admin/ledger/export';
+      try {
+        const res = await fetch(`${API}${url}`, { credentials: 'include' });
+        const text = await res.text();
+        const blob = new Blob(['\ufeff' + text], { type: 'text/csv;charset=utf-8' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `access-ledger-${Date.now()}.csv`;
+        a.click();
+        URL.revokeObjectURL(a.href);
+      } catch (e) { alert(e.message); }
+    }
+
+    // ===== OIDC 应用管理 =====
+    async function loadOidcClients() {
+      try {
+        const data = await api('/admin/oidc-clients');
+        const tbody = document.getElementById('oidcTableBody');
+        tbody.innerHTML = '';
+        if (!data.clients.length) {
+          tbody.innerHTML = '<tr><td colspan="5" class="empty">暂无 OIDC 应用</td></tr>';
+          return;
+        }
+        for (const c of data.clients) {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td>${c.name}</td>
+            <td style="font-family:monospace;font-size:12px">${c.clientId}</td>
+            <td style="font-size:12px;color:#666">${c.redirectUris.join('<br>')}</td>
+            <td><button class="btn btn-outline" onclick="revealClientSecret('${c.clientId}')">🔑 查看密钥</button></td>
+            <td><button class="btn btn-outline" style="color:#dc3545" onclick="deleteOidcClient('${c.id}')">删除</button></td>`;
+          tbody.appendChild(tr);
+        }
+      } catch (e) { showMsg(document.getElementById('oidcMsg'), e.message, 'error'); }
+    }
+
+    async function createOidcClient() {
+      const name = document.getElementById('oidcName').value.trim();
+      const uris = document.getElementById('oidcUris').value.split(',').map(s => s.trim()).filter(Boolean);
+      const msgEl = document.getElementById('oidcMsg');
+      if (!name || !uris.length) { showMsg(msgEl, '应用名与回调地址为必填项', 'error'); return; }
+      try {
+        const data = await api('/admin/oidc-clients', { method: 'POST', body: JSON.stringify({ name, redirectUris: uris }) });
+        const c = data.client;
+        showMsg(msgEl, `创建成功。Client ID: ${c.clientId}`, 'success');
+        const row = prompt(`请立即保存 Client Secret（仅此一次显示）：\n${c.clientSecret}`);
+        if (!row) showMsg(msgEl, '创建成功（Secret 未保存，需重新创建）', 'info');
+        document.getElementById('oidcName').value = document.getElementById('oidcUris').value = '';
+        loadOidcClients();
+      } catch (e) { showMsg(msgEl, e.message, 'error'); }
+    }
+
+    async function revealClientSecret(clientId) {
+      if (!confirm('查看 Client Secret 会触发数据库校验。当前版本不存明文，无法二次展示，请通过重新创建获取。')) return;
+      showMsg(document.getElementById('oidcMsg'), 'Client Secret 仅创建时展示一次；如需重置请删除后重建', 'info');
+    }
+
+    async function deleteOidcClient(id) {
+      if (!confirm('确定删除该 OIDC 应用？其所有授权码将失效。')) return;
+      try {
+        await api(`/admin/oidc-clients/${id}`, { method: 'DELETE' });
+        showMsg(document.getElementById('oidcMsg'), '应用已删除', 'success');
+        loadOidcClients();
+      } catch (e) { showMsg(document.getElementById('oidcMsg'), e.message, 'error'); }
+    }
+
+    // ===== ABAC 属性授权 =====
+    async function loadAbacPolicies() {
+      try {
+        const d = await api('/admin/abac/policies');
+        document.getElementById('abacTableBody').innerHTML = d.policies.map(p =>
+          `<tr>
+            <td>${p.name}</td><td>${p.resource_type}</td><td>${p.effect}</td><td>${p.priority}</td>
+            <td>${p.enabled ? '✅' : '⛔'}</td>
+            <td style="font-size:11px;max-width:420px">${JSON.stringify(p.conditions)}</td>
+            <td>
+              <button class="btn btn-outline" onclick="toggleAbacPolicy('${p.id}', ${p.enabled ? 0 : 1})">${p.enabled ? '停用' : '启用'}</button>
+              <button class="btn btn-outline" onclick="deleteAbacPolicy('${p.id}')">删除</button>
+            </td>
+          </tr>`).join('') || '<tr><td colspan="7" style="color:#999">暂无策略</td></tr>';
+      } catch (e) { showMsg(document.getElementById('abacMsg'), e.message, 'error'); }
+    }
+
+    async function createAbacPolicy() {
+      const msg = document.getElementById('abacMsg');
+      let conditions;
+      try { conditions = JSON.parse(document.getElementById('abacConditions').value || '[]'); }
+      catch (e) { showMsg(msg, '条件 JSON 格式错误', 'error'); return; }
+      const body = {
+        name: document.getElementById('abacName').value.trim(),
+        resourceType: document.getElementById('abacResourceType').value.trim(),
+        effect: document.getElementById('abacEffect').value,
+        priority: parseInt(document.getElementById('abacPriority').value) || 0,
+        enabled: document.getElementById('abacEnabled').checked ? 1 : 0,
+        description: document.getElementById('abacDesc').value.trim() || undefined,
+        conditions
+      };
+      if (!body.name || !body.resourceType) { showMsg(msg, '策略名称和资源类型必填', 'error'); return; }
+      try {
+        const d = await api('/admin/abac/policies', { method: 'POST', body: JSON.stringify(body) });
+        showMsg(msg, `${d.message}（${d.policy.name}）`, 'success');
+        loadAbacPolicies();
+      } catch (e) { showMsg(msg, e.message, 'error'); }
+    }
+
+    async function toggleAbacPolicy(id, enabled) {
+      try {
+        const d = await api(`/admin/abac/policies/${id}`, { method: 'PUT', body: JSON.stringify({ enabled }) });
+        showMsg(document.getElementById('abacMsg'), d.message, 'success');
+        loadAbacPolicies();
+      } catch (e) { showMsg(document.getElementById('abacMsg'), e.message, 'error'); }
+    }
+
+    async function deleteAbacPolicy(id) {
+      if (!confirm('确定删除该 ABAC 策略？')) return;
+      try {
+        const d = await api(`/admin/abac/policies/${id}`, { method: 'DELETE' });
+        showMsg(document.getElementById('abacMsg'), d.message, 'success');
+        loadAbacPolicies();
+      } catch (e) { showMsg(document.getElementById('abacMsg'), e.message, 'error'); }
+    }
+
+    // ===== 访问请求与审批流 =====
+    async function loadAccessRequests() {
+      try {
+        const status = document.getElementById('approvalFilter').value;
+        const q = status ? `?status=${status}` : '';
+        const [d, s] = await Promise.all([api('/admin/access-requests' + q), api('/admin/settings')]);
+        document.getElementById('approvalLevels').textContent = s.settings.approval_levels;
+        document.getElementById('approvalTableBody').innerHTML = d.requests.map(r => {
+          const roles = (r.roles || []).map(x => x.name).join(', ');
+          const progress = `${r.approvals_count}/${r.approval_levels}`;
+          const actions = r.status === 'pending'
+            ? `<button class="btn btn-outline" onclick="approveRequest('${r.id}')">通过</button>
+               <button class="btn btn-outline" onclick="rejectRequest('${r.id}')">拒绝</button>`
+            : '—';
+          return `<tr>
+            <td>${r.username}</td><td>${roles}</td><td style="font-size:12px">${r.reason || ''}</td>
+            <td>${r.status}</td><td>${progress}</td><td style="font-size:12px">${r.note || ''}</td>
+            <td style="font-size:12px">${(r.created_at || '').slice(0, 19)}</td><td>${actions}</td>
+          </tr>`;
+        }).join('') || '<tr><td colspan="8" style="color:#999">暂无请求</td></tr>';
+      } catch (e) { showMsg(document.getElementById('approvalMsg'), e.message, 'error'); }
+    }
+
+    async function approveRequest(id) {
+      const note = prompt('审批备注（可留空）') || '';
+      if (note === null) return;
+      try {
+        const d = await api(`/admin/access-requests/${id}/approve`, { method: 'POST', body: JSON.stringify({ note }) });
+        showMsg(document.getElementById('approvalMsg'), d.message, 'success');
+        loadAccessRequests();
+      } catch (e) { showMsg(document.getElementById('approvalMsg'), e.message, 'error'); }
+    }
+
+    async function rejectRequest(id) {
+      const note = prompt('拒绝原因（可留空）') || '';
+      if (note === null) return;
+      if (!confirm('确定拒绝该访问请求？')) return;
+      try {
+        const d = await api(`/admin/access-requests/${id}/reject`, { method: 'POST', body: JSON.stringify({ note }) });
+        showMsg(document.getElementById('approvalMsg'), d.message, 'success');
+        loadAccessRequests();
+      } catch (e) { showMsg(document.getElementById('approvalMsg'), e.message, 'error'); }
+    }
+
+    // ===== 服务账号（非人类身份）=====
+    async function loadServiceAccounts() {
+      try {
+        const [d, p] = await Promise.all([api('/admin/service-accounts'), api('/admin/permissions')]);
+        document.getElementById('saPerms').innerHTML = p.permissions.map(x => `<option value="${x.name}">${x.name}</option>`).join('');
+        document.getElementById('saTableBody').innerHTML = d.serviceAccounts.map(sa =>
+          `<tr>
+            <td>${sa.name}</td><td style="font-size:12px">${sa.client_id}</td>
+            <td style="font-size:12px;max-width:260px">${(sa.permissions || []).join(', ')}</td>
+            <td>${sa.token_ttl_minutes}min</td>
+            <td>${sa.status === 'active' ? '✅' : '⛔'}</td>
+            <td style="font-size:12px">${(sa.last_used_at || '').slice(0, 19)}</td>
+            <td>
+              <button class="btn btn-outline" onclick="regenerateSaSecret('${sa.id}')">重发凭据</button>
+              <button class="btn btn-outline" onclick="toggleSa('${sa.id}', '${sa.status === 'active' ? 'disabled' : 'active'}')">${sa.status === 'active' ? '禁用' : '启用'}</button>
+              <button class="btn btn-outline" onclick="deleteServiceAccount('${sa.id}')">删除</button>
+            </td>
+          </tr>`).join('') || '<tr><td colspan="7" style="color:#999">暂无服务账号</td></tr>';
+      } catch (e) { showMsg(document.getElementById('saMsg'), e.message, 'error'); }
+    }
+
+    async function createServiceAccount() {
+      const msg = document.getElementById('saMsg');
+      const permissions = [...document.getElementById('saPerms').selectedOptions].map(o => o.value);
+      const body = {
+        name: document.getElementById('saName').value.trim(),
+        description: document.getElementById('saDesc').value.trim() || undefined,
+        permissions,
+        tokenTtlMinutes: parseInt(document.getElementById('saTtl').value) || 15
+      };
+      if (!body.name) { showMsg(msg, '名称必填', 'error'); return; }
+      if (!permissions.length) { showMsg(msg, '请至少选择一个权限', 'error'); return; }
+      try {
+        const d = await api('/admin/service-accounts', { method: 'POST', body: JSON.stringify(body) });
+        showMsg(msg, `${d.message}｜Client ID: ${d.clientId}｜Secret: ${d.clientSecret}`, 'success');
+        loadServiceAccounts();
+      } catch (e) { showMsg(msg, e.message, 'error'); }
+    }
+
+    async function regenerateSaSecret(id) {
+      if (!confirm('重发凭据后旧令牌全部作废，确定？')) return;
+      try {
+        const d = await api(`/admin/service-accounts/${id}/secret`, { method: 'POST' });
+        showMsg(document.getElementById('saMsg'), `新 Secret: ${d.clientSecret}`, 'success');
+        loadServiceAccounts();
+      } catch (e) { showMsg(document.getElementById('saMsg'), e.message, 'error'); }
+    }
+
+    async function toggleSa(id, status) {
+      try {
+        const d = await api(`/admin/service-accounts/${id}`, { method: 'PUT', body: JSON.stringify({ status }) });
+        showMsg(document.getElementById('saMsg'), d.message, 'success');
+        loadServiceAccounts();
+      } catch (e) { showMsg(document.getElementById('saMsg'), e.message, 'error'); }
+    }
+
+    async function deleteServiceAccount(id) {
+      if (!confirm('确定删除该服务账号？其令牌将全部失效。')) return;
+      try {
+        const d = await api(`/admin/service-accounts/${id}`, { method: 'DELETE' });
+        showMsg(document.getElementById('saMsg'), d.message, 'success');
+        loadServiceAccounts();
+      } catch (e) { showMsg(document.getElementById('saMsg'), e.message, 'error'); }
+    }
+
+    // ===== 默认账户治理（等保）=====
+    async function loadDefaultAccounts() {
+      try {
+        const [d, s] = await Promise.all([api('/admin/default-accounts'), api('/admin/settings')]);
+        document.getElementById('govPolicy').value = s.settings.default_account_policy || '0';
+        const msgEl = document.getElementById('govMsg');
+        showMsg(msgEl, d.highRisk ? '⚠️ 存在仍使用默认密码的种子账户' : '✅ 未检测到默认密码风险', d.highRisk ? 'error' : 'success');
+        document.getElementById('govTableBody').innerHTML = d.riskAccounts.map(a =>
+          `<tr>
+            <td>${a.username}</td><td style="font-size:12px">${a.email || a.phone || '—'}</td>
+            <td>${a.isSeed ? '✅' : '—'}</td>
+            <td>${a.usesDefaultPassword ? '🔴 是' : '✅ 否'}</td>
+            <td>${a.passwordLoginAllowed ? '允许' : '⛔ 禁用'}</td>
+            <td>${a.mustChangePassword ? '是' : '否'}</td>
+            <td>${a.status}</td>
+            <td>
+              <button class="btn btn-outline" onclick="govForceReset('${a.id}')">强制改密</button>
+              ${a.passwordLoginAllowed
+                ? `<button class="btn btn-outline" onclick="govDisableLogin('${a.id}')">禁用登录</button>`
+                : `<button class="btn btn-outline" onclick="govEnableLogin('${a.id}')">恢复登录</button>`}
+              <button class="btn btn-outline" onclick="govDelete('${a.id}')">删除</button>
+            </td>
+          </tr>`).join('') || '<tr><td colspan="8" style="color:#999">暂无种子账户</td></tr>';
+      } catch (e) { showMsg(document.getElementById('govMsg'), e.message, 'error'); }
+    }
+
+    async function saveGovPolicy() {
+      const v = document.getElementById('govPolicy').value;
+      try {
+        await api('/admin/settings', { method: 'PUT', body: JSON.stringify({ default_account_policy: v }) });
+        showMsg(document.getElementById('govMsg'), v === '1' ? '已开启：种子账户默认密码登录将被拦截' : '已关闭拦截', 'success');
+        loadDefaultAccounts();
+      } catch (e) { showMsg(document.getElementById('govMsg'), e.message, 'error'); }
+    }
+
+    async function govForceReset(id) {
+      if (!confirm('强制该账户下次登录必须改密，并吊销其全部会话？')) return;
+      try {
+        const d = await api(`/admin/default-accounts/${id}/force-reset`, { method: 'POST' });
+        showMsg(document.getElementById('govMsg'), d.message, 'success');
+        loadDefaultAccounts();
+      } catch (e) { showMsg(document.getElementById('govMsg'), e.message, 'error'); }
+    }
+
+    async function govDisableLogin(id) {
+      if (!confirm('禁用该账户默认凭据登录（SSO/OTP/TOTP 不受影响）？')) return;
+      try {
+        const d = await api(`/admin/default-accounts/${id}/disable-login`, { method: 'POST' });
+        showMsg(document.getElementById('govMsg'), d.message, 'success');
+        loadDefaultAccounts();
+      } catch (e) { showMsg(document.getElementById('govMsg'), e.message, 'error'); }
+    }
+
+    async function govEnableLogin(id) {
+      try {
+        const d = await api(`/admin/default-accounts/${id}/enable-login`, { method: 'POST' });
+        showMsg(document.getElementById('govMsg'), d.message, 'success');
+        loadDefaultAccounts();
+      } catch (e) { showMsg(document.getElementById('govMsg'), e.message, 'error'); }
+    }
+
+    async function govDelete(id) {
+      if (!confirm('确定删除该默认账户？')) return;
+      try {
+        const d = await api(`/admin/default-accounts/${id}`, { method: 'DELETE' });
+        showMsg(document.getElementById('govMsg'), d.message, 'success');
+        loadDefaultAccounts();
+      } catch (e) { showMsg(document.getElementById('govMsg'), e.message, 'error'); }
+    }
+
+    // ===== 访问复审（Access Certification）=====
+    async function loadCertifications() {
+      try {
+        const d = await api('/admin/certifications');
+        document.getElementById('certTableBody').innerHTML = d.campaigns.map(c =>
+          `<tr>
+            <td>${c.name}</td>
+            <td>${c.status === 'open' ? '🟢 开放' : '🔒 已关闭'}</td>
+            <td style="font-size:12px">${c.scopeType === 'dept' ? '部门' : '用户'}: ${JSON.stringify(c.scopeValue)}</td>
+            <td style="font-size:12px">${c.dueDate ? new Date(c.dueDate).toLocaleString() : '无'}</td>
+            <td>${c.stats.pending} / ${c.stats.kept} / ${c.stats.revoked}</td>
+            <td>${c.autoAction === 'revoke' ? '默认撤销' : '默认保留'}</td>
+            <td>
+              <button class="btn btn-outline" onclick="openCertification('${c.id}')">明细</button>
+              ${c.status === 'open' ? `<button class="btn btn-outline" onclick="closeCertification('${c.id}')">关闭</button>` : ''}
+            </td>
+          </tr>`).join('') || '<tr><td colspan="7" style="color:#999">暂无复审活动</td></tr>';
+      } catch (e) { showMsg(document.getElementById('certMsg'), e.message, 'error'); }
+    }
+
+    async function createCertification() {
+      const name = document.getElementById('certName').value.trim();
+      if (!name) { showMsg(document.getElementById('certMsg'), '请填写活动名称', 'error'); return; }
+      const scopeType = document.getElementById('certScopeType').value;
+      const scopeValue = scopeType === 'dept'
+        ? document.getElementById('certScopeValue').value.trim()
+        : document.getElementById('certScopeValue').value.split(',').map(s => s.trim()).filter(Boolean);
+      if (!scopeValue) { showMsg(document.getElementById('certMsg'), '请填写部门ID 或 用户ID', 'error'); return; }
+      const dueDate = document.getElementById('certDueDate').value ? new Date(document.getElementById('certDueDate').value).toISOString() : null;
+      const autoAction = document.getElementById('certAutoAction').value;
+      try {
+        const d = await api('/admin/certifications', { method: 'POST', body: JSON.stringify({ name, scopeType, scopeValue, dueDate, autoAction }) });
+        showMsg(document.getElementById('certMsg'), d.message, 'success');
+        document.getElementById('certName').value = '';
+        loadCertifications();
+      } catch (e) { showMsg(document.getElementById('certMsg'), e.message, 'error'); }
+    }
+
+    async function openCertification(id) {
+      try {
+        const d = await api(`/admin/certifications/${id}`);
+        const c = d.campaign;
+        document.getElementById('certDetail').innerHTML = `
+          <h3>${c.name}（${c.status === 'open' ? '🟢 开放' : '🔒 已关闭'}）— 待审 ${c.stats.pending} / 保留 ${c.stats.kept} / 撤销 ${c.stats.revoked}</h3>
+          <table>
+            <thead><tr><th>用户</th><th>角色</th><th>状态</th><th>复审人</th><th>备注</th><th>操作</th></tr></thead>
+            <tbody>${c.items.map(i => `
+              <tr>
+                <td>${i.user_name || i.user_id}</td><td>${i.role_name || i.role_id}</td>
+                <td>${i.status === 'pending' ? '⏳ 待审' : i.status === 'kept' ? '✅ 保留' : '🗑️ 撤销'}</td>
+                <td>${i.reviewed_by || '—'}</td><td style="font-size:12px">${i.note || '—'}</td>
+                <td>${i.status === 'pending' && c.status === 'open'
+                  ? `<button class="btn btn-outline" onclick="certDecision('${c.id}','${i.id}','keep')">保留</button>
+                     <button class="btn btn-outline" onclick="certDecision('${c.id}','${i.id}','revoke')">撤销</button>`
+                  : '—'}</td>
+              </tr>`).join('')}</tbody>
+          </table>`;
+      } catch (e) { showMsg(document.getElementById('certMsg'), e.message, 'error'); }
+    }
+
+    async function certDecision(campaignId, itemId, action) {
+      if (action === 'revoke' && !confirm('撤销后该用户立即失去此角色，确定？')) return;
+      try {
+        const d = await api(`/admin/certifications/${campaignId}/items/${itemId}/decision`, { method: 'POST', body: JSON.stringify({ action }) });
+        showMsg(document.getElementById('certMsg'), d.message, 'success');
+        openCertification(campaignId);
+        loadCertifications();
+      } catch (e) { showMsg(document.getElementById('certMsg'), e.message, 'error'); }
+    }
+
+    async function closeCertification(id) {
+      if (!confirm('关闭后未处理项将按到期处置策略批量执行，确定？')) return;
+      try {
+        const d = await api(`/admin/certifications/${id}/close`, { method: 'POST' });
+        showMsg(document.getElementById('certMsg'), d.message, 'success');
+        loadCertifications();
+      } catch (e) { showMsg(document.getElementById('certMsg'), e.message, 'error'); }
+    }
+
+    // ===== 工作流引擎 =====
+    async function loadWorkflows() {
+      try {
+        const d = await api('/admin/workflows');
+        document.getElementById('wfTableBody').innerHTML = d.workflows.map(w =>
+          `<tr>
+            <td>${w.name}</td><td>${w.type}</td>
+            <td>${w.definition.nodes.length}</td>
+            <td>${w.active ? '🟢 启用' : '⚪ 停用'}</td>
+            <td>
+              <button class="btn btn-outline" onclick="toggleWorkflow('${w.id}',${!w.active})">${w.active ? '停用' : '启用'}</button>
+              <button class="btn btn-outline" onclick="deleteWorkflow('${w.id}')">删除</button>
+            </td>
+          </tr>`).join('') || '<tr><td colspan="5" style="color:#999">暂无工作流定义</td></tr>';
+      } catch (e) { showMsg(document.getElementById('wfMsg'), e.message, 'error'); }
+    }
+
+    async function createWorkflow() {
+      const name = document.getElementById('wfName').value.trim();
+      const type = document.getElementById('wfType').value.trim();
+      let definition;
+      try { definition = JSON.parse(document.getElementById('wfDef').value); } catch (e) { showMsg(document.getElementById('wfMsg'), '节点 JSON 解析失败', 'error'); return; }
+      if (!name) { showMsg(document.getElementById('wfMsg'), '请填写名称', 'error'); return; }
+      try {
+        const d = await api('/admin/workflows', { method: 'POST', body: JSON.stringify({ name, type, definition, active: true }) });
+        showMsg(document.getElementById('wfMsg'), d.message, 'success');
+        loadWorkflows();
+      } catch (e) { showMsg(document.getElementById('wfMsg'), e.message, 'error'); }
+    }
+
+    async function toggleWorkflow(id, active) {
+      try {
+        const d = await api(`/admin/workflows/${id}`, { method: 'PUT', body: JSON.stringify({ active }) });
+        showMsg(document.getElementById('wfMsg'), d.message, 'success');
+        loadWorkflows();
+      } catch (e) { showMsg(document.getElementById('wfMsg'), e.message, 'error'); }
+    }
+
+    async function deleteWorkflow(id) {
+      if (!confirm('确定删除该工作流定义？')) return;
+      try {
+        const d = await api(`/admin/workflows/${id}`, { method: 'DELETE' });
+        showMsg(document.getElementById('wfMsg'), d.message, 'success');
+        loadWorkflows();
+      } catch (e) { showMsg(document.getElementById('wfMsg'), e.message, 'error'); }
+    }
+
+    async function loadTasks() {
+      try {
+        const d = await api('/admin/workflow-tasks');
+        document.getElementById('taskPanel').innerHTML = `<h3>待办审批（${d.tasks.length}）</h3>` + (
+          d.tasks.length
+            ? `<table><thead><tr><th>节点</th><th>审批人类型</th><th>审批人</th><th>状态</th><th>操作</th></tr></thead>
+               <tbody>${d.tasks.map(t => `
+                 <tr>
+                   <td>${t.node_name || '—'}</td><td>${t.assignee_type}</td><td>${t.assignee_id}</td>
+                   <td>${t.status === 'pending' ? '⏳ 待审' : t.status}</td>
+                   <td><button class="btn btn-outline" onclick="wfDecide('${t.instance_id}','${t.id}','approved')">通过</button>
+                       <button class="btn btn-outline" onclick="wfDecide('${t.instance_id}','${t.id}','rejected')">拒绝</button></td>
+                 </tr>`).join('')}</tbody></table>`
+            : '<p style="color:#999">暂无待办</p>');
+      } catch (e) { showMsg(document.getElementById('wfMsg'), e.message, 'error'); }
+    }
+
+    async function wfDecide(instanceId, taskId, decision) {
+      if (decision === 'rejected' && !confirm('拒绝将终止该流程，确定？')) return;
+      try {
+        const d = await api(`/admin/workflow-tasks/${taskId}/decision`, { method: 'POST', body: JSON.stringify({ decision }) });
+        showMsg(document.getElementById('wfMsg'), d.message, 'success');
+        loadTasks();
+      } catch (e) { showMsg(document.getElementById('wfMsg'), e.message, 'error'); }
+    }
+
+    // ===== 即时访问 JIT =====
+    async function loadJitGrants() {
+      try {
+        const d = await api('/admin/jit-grants');
+        document.getElementById('jitTableBody').innerHTML = d.grants.map(g =>
+          `<tr>
+            <td>${g.user_id.slice(0,8)}</td><td>${g.role_id.slice(0,8)}</td>
+            <td style="font-size:12px">${g.reason || '—'}</td>
+            <td>${g.duration_minutes}</td>
+            <td>${g.status === 'pending' ? '⏳ 待审' : g.status === 'active' ? '🟢 生效中' : g.status === 'expired' ? '⏱️ 已过期' : g.status === 'revoked' ? '🚫 已撤销' : '⛔ 已拒绝'}</td>
+            <td style="font-size:12px">${g.expires_at ? new Date(g.expires_at).toLocaleString() : '—'}</td>
+            <td>${g.granted_by || '—'}</td>
+            <td>
+              ${g.status === 'pending' ? `<button class="btn btn-outline" onclick="jitAct('${g.id}','approve')">批准</button>
+                  <button class="btn btn-outline" onclick="jitAct('${g.id}','reject')">拒绝</button>` : ''}
+              ${g.status === 'active' ? `<button class="btn btn-outline" onclick="jitAct('${g.id}','revoke')">撤销</button>` : ''}
+            </td>
+          </tr>`).join('') || '<tr><td colspan="8" style="color:#999">暂无提权申请</td></tr>';
+      } catch (e) { showMsg(document.getElementById('jitMsg'), e.message, 'error'); }
+    }
+
+    async function jitAct(id, action) {
+      if ((action === 'revoke' || action === 'reject') && !confirm(`确定${action === 'revoke' ? '撤销该提权？' : '拒绝该申请？'}`)) return;
+      try {
+        const d = await api(`/admin/jit-grants/${id}/${action}`, { method: 'POST' });
+        showMsg(document.getElementById('jitMsg'), d.message, 'success');
+        loadJitGrants();
+      } catch (e) { showMsg(document.getElementById('jitMsg'), e.message, 'error'); }
+    }
+
+    // ===== 权限分析 =====
+    async function loadViolations() {
+      try {
+        const d = await api('/admin/analytics/violations');
+        document.getElementById('anMining').innerHTML = '';
+        const el = document.getElementById('anViolations');
+        const sev = d.bySeverity;
+        el.innerHTML = `<div style="margin:8px 0">共 <b>${d.total}</b> 项违规（高危 ${sev.high||0} / 中危 ${sev.medium||0} / 低危 ${sev.low||0}）</div>
+        <table><thead><tr><th>类型</th><th>级别</th><th>用户</th><th>角色</th><th>权限</th><th>建议</th></tr></thead><tbody>
+        ${d.violations.map(v => `<tr>
+          <td>${v.type==='zombie_access'?'🧟 僵尸持权':v.type==='high_risk_perm'?'🚨 敏感权限':v.type==='privilege_concentration'?'🧨 权限聚集':v.type}</td>
+          <td>${v.severity==='high'?'🔴 高':v.severity==='medium'?'🟠 中':'🟡 低'}</td>
+          <td>${v.username}</td>
+          <td style="font-size:12px">${(v.roles||[]).map(r=>r.slice(0,6)).join(', ')||'—'}</td>
+          <td style="font-size:12px">${(v.perms||[]).join(', ')||'—'}</td>
+          <td style="font-size:12px">${v.suggestion||''}</td></tr>`).join('') || '<tr><td colspan="6" style="color:#999">🎉 未发现违规</td></tr>'}
+        </tbody></table>`;
+      } catch (e) { showMsg(document.getElementById('anMsg'), e.message, 'error'); }
+    }
+
+    async function loadRoleMining() {
+      try {
+        const d = await api('/admin/analytics/role-mining');
+        document.getElementById('anViolations').innerHTML = '';
+        const el = document.getElementById('anMining');
+        el.innerHTML = `<div style="margin:8px 0">候选角色（支持度 ≥ ${d.minSupport}，共 ${d.candidates.length} 个）：</div>
+        <table><thead><tr><th>权限组合</th><th>支持度</th><th>覆盖用户</th><th>操作</th></tr></thead><tbody>
+        ${d.candidates.map((c,i)=>`<tr>
+          <td style="font-size:12px">${c.permissions.join(' + ')}</td>
+          <td>${c.support}</td>
+          <td style="font-size:12px">${c.coveredUsers.length} 人</td>
+          <td><button class="btn btn-outline" onclick="promoteRole(${i})">落库</button></td></tr>`).join('') || '<tr><td colspan="4" style="color:#999">暂无候选</td></tr>'}
+        </tbody></table>`;
+        window.__miningCandidates = d.candidates;
+      } catch (e) { showMsg(document.getElementById('anMsg'), e.message, 'error'); }
+    }
+
+    async function promoteRole(i) {
+      const c = window.__miningCandidates[i];
+      const name = prompt('新角色名称', c.permissions.join('_').replace(/[^a-zA-Z0-9_]/g,'_'));
+      if (!name) return;
+      try {
+        const d = await api('/admin/analytics/role-mining/promote', { method: 'POST', body: JSON.stringify({ name, permissionNames: c.permissions, userIds: c.coveredUsers }) });
+        showMsg(document.getElementById('anMsg'), d.message, 'success');
+        loadRoleMining();
+      } catch (e) { showMsg(document.getElementById('anMsg'), e.message, 'error'); }
+    }
+
+    // ===== 应急访问 Break-glass =====
+    async function loadBreakglass() {
+      try {
+        const d = await api('/admin/breakglass');
+        document.getElementById('bgTableBody').innerHTML = d.events.map(g =>
+          `<tr>
+            <td>${g.user_id.slice(0,8)}</td>
+            <td style="font-size:12px">${g.reason || '—'}</td>
+            <td>${g.duration_minutes}</td>
+            <td>${g.status === 'started' ? '🟢 进行中' : g.status === 'ended' ? '⏹️ 已结束' : '✅ 已审查'}</td>
+            <td style="font-size:12px">${g.started_at}</td>
+            <td style="font-size:12px">${g.ended_at ? new Date(g.ended_at).toLocaleString() : '—'}</td>
+            <td>${g.reviewed_by || '—'}</td>
+            <td>
+              ${g.status === 'started' ? `<button class="btn btn-outline" onclick="bgAct('${g.id}','end')">强制结束</button>` : ''}
+              ${g.status === 'ended' ? `<button class="btn btn-outline" onclick="bgReview('${g.id}')">审查</button>` : ''}
+            </td>
+          </tr>`).join('') || '<tr><td colspan="8" style="color:#999">暂无应急事件</td></tr>';
+      } catch (e) { showMsg(document.getElementById('bgMsg'), e.message, 'error'); }
+    }
+
+    async function bgAct(id, action) {
+      if (!confirm('确定强制结束该应急访问？')) return;
+      try {
+        const d = await api(`/admin/breakglass/${id}/${action}`, { method: 'POST' });
+        showMsg(document.getElementById('bgMsg'), d.message, 'success');
+        loadBreakglass();
+      } catch (e) { showMsg(document.getElementById('bgMsg'), e.message, 'error'); }
+    }
+
+    async function bgReview(id) {
+      const note = prompt('审查意见');
+      try {
+        const d = await api(`/admin/breakglass/${id}/review`, { method: 'POST', body: JSON.stringify({ reviewNote: note }) });
+        showMsg(document.getElementById('bgMsg'), d.message, 'success');
+        loadBreakglass();
+      } catch (e) { showMsg(document.getElementById('bgMsg'), e.message, 'error'); }
+    }
+
+    // ===== 特权账号 =====
+    async function loadPa() {
+      try {
+        const d = await api('/admin/privileged-accounts');
+        const s = d.stats;
+        document.getElementById('paStats').innerHTML = `<div style="margin:8px 0">共 <b>${s.total}</b> 条（admin ${s.byType.admin||0} / service ${s.byType.service||0} / shared ${s.byType.shared||0}；高 ${s.byRisk.high||0} / 中 ${s.byRisk.medium||0} / 低 ${s.byRisk.low||0}；待审查 ${s.pendingReview}；未关联保险库 ${s.unlinked}）</div>`;
+        document.getElementById('paTableBody').innerHTML = d.records.map(r =>
+          `<tr>
+            <td>${r.display_name || '—'}</td>
+            <td>${r.account_type==='admin'?'👤 管理员':r.account_type==='service'?'🤖 服务':r.account_type==='shared'?'👥 共享':r.account_type}</td>
+            <td>${r.source==='auto'?'自动':'手动'}</td>
+            <td>${r.risk_level==='high'?'🔴高':r.risk_level==='medium'?'🟠中':'🟡低'}</td>
+            <td>${r.status==='active'?'✅':'🗑️ 已退管'}</td>
+            <td>${r.owner || '—'}</td>
+            <td>${r.last_review_at ? new Date(r.last_review_at).toLocaleDateString() : '⏳ 待审'}</td>
+            <td>${r.credential_id ? '🔗 已关联' : '—'}</td>
+            <td>
+              ${r.status==='active' ? `<button class="btn btn-outline" onclick="paAct('${r.id}','review')">审查</button>
+                <button class="btn btn-outline" onclick="paAct('${r.id}','retire')">退管</button>` : ''}
+            </td>
+          </tr>`).join('') || '<tr><td colspan="9" style="color:#999">暂无登记（先"自动发现"）</td></tr>';
+      } catch (e) { showMsg(document.getElementById('paMsg'), e.message, 'error'); }
+    }
+
+    async function paDiscover() {
+      try {
+        const d = await api('/admin/privileged-accounts/discover', { method: 'POST' });
+        showMsg(document.getElementById('paMsg'), d.message, 'success');
+        loadPa();
+      } catch (e) { showMsg(document.getElementById('paMsg'), e.message, 'error'); }
+    }
+
+    async function paAct(id, action) {
+      if (action === 'retire' && !confirm('确定退管该特权账号？')) return;
+      try {
+        const d = await api(`/admin/privileged-accounts/${id}/${action}`, { method: 'POST' });
+        showMsg(document.getElementById('paMsg'), d.message, 'success');
+        loadPa();
+      } catch (e) { showMsg(document.getElementById('paMsg'), e.message, 'error'); }
+    }
+
+    // ===== Webhook =====
+    async function loadWebhooks() {
+      try {
+        const d = await api('/admin/webhooks');
+        document.getElementById('whTableBody').innerHTML = d.webhooks.map(w =>
+          `<tr>
+            <td style="font-size:12px">${w.url}</td>
+            <td>${w.events}</td>
+            <td>${w.enabled ? '🟢' : '⏸️'}</td>
+            <td style="font-size:12px">${w.last_sent_at ? new Date(w.last_sent_at).toLocaleString() : '—'}</td>
+            <td>${w.last_status === 'ok' ? '✅' : w.last_status === 'error' ? `❌ ${w.last_error||''}` : '—'}</td>
+            <td>
+              <button class="btn btn-outline" onclick="whAct('${w.id}','test')">测试</button>
+              <button class="btn btn-outline" onclick="whAct('${w.id}','toggle')">${w.enabled ? '停用' : '启用'}</button>
+              <button class="btn btn-outline" onclick="whAct('${w.id}','delete')">删除</button>
+            </td>
+          </tr>`).join('') || '<tr><td colspan="6" style="color:#999">暂无订阅</td></tr>';
+      } catch (e) { showMsg(document.getElementById('whMsg'), e.message, 'error'); }
+    }
+
+    async function whCreate() {
+      const url = document.getElementById('whUrl').value;
+      const secret = document.getElementById('whSecret').value;
+      const events = document.getElementById('whEvents').value || '*';
+      try {
+        const d = await api('/admin/webhooks', { method: 'POST', body: JSON.stringify({ url, secret, events }) });
+        showMsg(document.getElementById('whMsg'), d.message, 'success');
+        loadWebhooks();
+      } catch (e) { showMsg(document.getElementById('whMsg'), e.message, 'error'); }
+    }
+
+    async function whAct(id, action) {
+      if (action === 'delete' && !confirm('确定删除该订阅？')) return;
+      try {
+        if (action === 'toggle') {
+          const d = await api(`/admin/webhooks/${id}`, { method: 'PUT', body: JSON.stringify({}) });
+          showMsg(document.getElementById('whMsg'), '已切换启停', 'success');
+        } else {
+          const d = await api(`/admin/webhooks/${id}/${action}`, { method: action === 'test' ? 'POST' : 'DELETE' });
+          showMsg(document.getElementById('whMsg'), d.message, action === 'test' && !d.ok ? 'error' : 'success');
+        }
+        loadWebhooks();
+      } catch (e) { showMsg(document.getElementById('whMsg'), e.message, 'error'); }
+    }
+
+    // ===== 生命周期自动化（IGA）=====
+    async function loadLifecycle() {
+      try {
+        const [users, depts, roles, groups] = await Promise.all([
+          api('/admin/users'), api('/admin/departments'), api('/admin/roles'), api('/admin/groups')
+        ]);
+        const userOpts = users.users.map(u => `<option value="${u.id}">${u.username}</option>`).join('');
+        const deptOpts = `<option value="">（无）</option>` + depts.departments.map(d => `<option value="${d.id}">${d.name}</option>`).join('');
+        const roleOpts = roles.roles.map(r => `<option value="${r.id}">${r.name}</option>`).join('');
+        document.getElementById('ljDept').innerHTML = deptOpts;
+        document.getElementById('mvUser').innerHTML = userOpts;
+        document.getElementById('mvDept').innerHTML = deptOpts;
+        document.getElementById('mvAddRole').innerHTML = roleOpts;
+        document.getElementById('mvRemoveRole').innerHTML = roleOpts;
+        document.getElementById('lvUser').innerHTML = userOpts;
+      } catch (e) { alert(e.message); }
+    }
+
+    async function lifecycleJoin() {
+      const msg = document.getElementById('ljMsg');
+      const body = {
+        username: document.getElementById('ljUsername').value.trim(),
+        password: document.getElementById('ljPassword').value,
+        email: document.getElementById('ljEmail').value.trim() || undefined,
+        phone: document.getElementById('ljPhone').value.trim() || undefined,
+        departmentId: document.getElementById('ljDept').value || undefined,
+        mustChangePassword: document.getElementById('ljMustChange').checked
+      };
+      if (!body.username || !body.password) { showMsg(msg, '用户名和初始密码必填', 'error'); return; }
+      try {
+        const d = await api('/admin/lifecycle/join', { method: 'POST', body: JSON.stringify(body) });
+        showMsg(msg, `${d.message}（${d.user.username}）`, 'success');
+        document.getElementById('ljUsername').value = '';
+        document.getElementById('ljPassword').value = '';
+      } catch (e) { showMsg(msg, e.message, 'error'); }
+    }
+
+    async function lifecycleMove() {
+      const msg = document.getElementById('mvMsg');
+      const body = {
+        userId: document.getElementById('mvUser').value,
+        departmentId: document.getElementById('mvDept').value || undefined,
+        addRoleIds: [...document.getElementById('mvAddRole').selectedOptions].map(o => o.value),
+        removeRoleIds: [...document.getElementById('mvRemoveRole').selectedOptions].map(o => o.value)
+      };
+      if (!body.userId) { showMsg(msg, '请选择用户', 'error'); return; }
+      try {
+        const d = await api('/admin/lifecycle/move', { method: 'POST', body: JSON.stringify(body) });
+        showMsg(msg, d.message, 'success');
+      } catch (e) { showMsg(msg, e.message, 'error'); }
+    }
+
+    async function lifecycleLeave() {
+      const msg = document.getElementById('lvMsg');
+      const body = {
+        userId: document.getElementById('lvUser').value,
+        mode: document.getElementById('lvMode').value,
+        revokeRoles: document.getElementById('lvRevokeRoles').checked
+      };
+      if (!body.userId) { showMsg(msg, '请选择用户', 'error'); return; }
+      if (!confirm('确定执行离职？将停用/归档账号并回收权限、下线所有会话。')) return;
+      try {
+        const d = await api('/admin/lifecycle/leave', { method: 'POST', body: JSON.stringify(body) });
+        showMsg(msg, d.message, 'success');
+      } catch (e) { showMsg(msg, e.message, 'error'); }
+    }
+
+    async function handleLogout(e) {
+      e.preventDefault();
+      try {
+        await fetch(`${API}/auth/logout`, { method: 'POST', headers: csrfHeaders(), credentials: 'include' });
+      } catch (err) {}
+      location.href = '/logout.html';
+    }
+
+    checkAuth();
+  </script>
+</body>
+</html>

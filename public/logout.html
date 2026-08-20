@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>正在登出...</title>
+  <style>
+    body { font-family: -apple-system, sans-serif; background: #f5f5f5; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+    .box { text-align: center; color: #555; }
+    .spinner { border: 3px solid #eee; border-top-color: #667eea; border-radius: 50%; width: 40px; height: 40px; animation: spin 0.8s linear infinite; margin: 0 auto 20px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <div class="box">
+    <div class="spinner"></div>
+    <p>正在全局登出所有系统...</p>
+  </div>
+  <script>
+    function getCookie(name) {
+      const match = document.cookie.match(new RegExp('(^|; )' + name + '=([^;]*)'));
+      return match ? decodeURIComponent(match[2]) : null;
+    }
+
+    // 调用 IAM 全局登出接口，吊销所有 token 并清除 cookie
+    async function logout() {
+      try {
+        const csrf = getCookie('csrf_token');
+        await fetch('/auth/logout', {
+          method: 'POST',
+          headers: csrf ? { 'X-CSRF-Token': csrf } : {},
+          credentials: 'include'
+        });
+      } catch (e) {
+        // 忽略网络错误
+      }
+      // 登出完成后跳转到登录页
+      window.location.href = '/login.html?logout=1';
+    }
+    logout();
+  </script>
+</body>
+</html>

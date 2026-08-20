@@ -1,0 +1,24 @@
+{
+  "name": "lightweight-iam",
+  "version": "1.0.0",
+  "description": "轻量级统一身份认证管理系统",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node start.js",
+    "start:iam": "node src/index.js",
+    "start:appA": "node apps/appA.js",
+    "start:appB": "node apps/appB.js",
+    "dev": "nodemon src/index.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "better-sqlite3": "^11.0.0",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.5",
+    "dotenv": "^17.4.2",
+    "express": "^4.18.2",
+    "express-rate-limit": "^8.6.2",
+    "jsonwebtoken": "^9.0.2",
+    "uuid": "^9.0.0"
+  }
+}
